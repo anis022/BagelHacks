@@ -1,11 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useToast } from "../components/ToastProvider";
 
+type SessionUser = {
+  id: number;
+  email: string;
+  balance: string;
+};
+
 export default function ProfilePage() {
   const toast = useToast();
+  const [user, setUser] = useState<SessionUser | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session")
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = (await res.json()) as { user?: SessionUser };
+        return data.user ?? null;
+      })
+      .then((nextUser) => {
+        if (active) setUser(nextUser);
+      })
+      .catch(() => {
+        if (active) setUser(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const displayName = useMemo(() => {
+    const email = user?.email;
+    if (!email) return "Account";
+    return email.split("@")[0];
+  }, [user?.email]);
 
   return (
     <AppShell>
@@ -16,16 +49,16 @@ export default function ProfilePage() {
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-secondary">Profile</p>
-            <h1 className="text-4xl font-headline font-extrabold tracking-tight">Ari Morgan</h1>
+            <h1 className="text-4xl font-headline font-extrabold tracking-tight">{displayName}</h1>
             <p className="text-on-surface-variant">Premium Sovereign Account · Verified</p>
           </div>
         </section>
 
         <section className="bg-surface-container-low rounded-[2rem] p-6 lg:p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ProfileField label="Email" value="ari.morgan@sovereignpay.com" />
+          <ProfileField label="Email" value={user?.email ?? "Loading..."} />
           <ProfileField label="Phone" value="+1 (415) 555-0192" />
           <ProfileField label="Country" value="United States" />
-          <ProfileField label="Default Currency" value="USDC" />
+          <ProfileField label="Balance" value={user?.balance ? `${user.balance} USDC` : "0 USDC"} />
         </section>
 
         <section className="bg-surface-container-lowest rounded-[2rem] p-6 lg:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

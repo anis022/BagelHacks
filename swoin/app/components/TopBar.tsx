@@ -7,6 +7,14 @@ import { useToast } from "./ToastProvider";
 export default function TopBar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const toast = useToast();
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+      window.location.href = "/login";
+    } catch {
+      toast("Sign out failed");
+    }
+  };
 
   return (
     <header className="fixed top-0 right-0 w-full lg:w-[calc(100%-16rem)] h-16 bg-background flex justify-between items-center px-6 lg:px-12 z-40">
@@ -113,10 +121,15 @@ export default function TopBar() {
           </button>
         </div>
         <div className="hidden lg:block h-8 w-px bg-outline-variant/30" />
-        <Link
-          href="/profile"
-          className="hidden lg:flex items-center gap-3 group"
-        >
+        <div className="hidden lg:flex items-center gap-3 group">
+          <button
+            onClick={handleSignOut}
+            className="text-xs font-bold text-secondary hover:text-primary transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+        <Link href="/profile" className="hidden lg:flex items-center gap-3 group">
           <span className="text-sm font-headline font-bold text-secondary group-hover:text-primary transition-colors">
             Profile
           </span>

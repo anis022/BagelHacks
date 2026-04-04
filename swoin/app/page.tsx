@@ -31,10 +31,10 @@ export default function LandingPage() {
             <span className="material-symbols-outlined text-lg">public</span>
             <span className="text-xs font-medium">Global Network: Online</span>
           </div>
-          <Link href="/dashboard" className="text-primary font-bold text-sm px-4 py-2 hover:bg-surface-container-high transition-all rounded-xl active:scale-95">
+          <Link href="/login" className="text-primary font-bold text-sm px-4 py-2 hover:bg-surface-container-high transition-all rounded-xl active:scale-95">
             Log In
           </Link>
-          <Link href="/dashboard" className="primary-gradient text-white px-6 py-2.5 rounded-xl text-sm font-bold ambient-shadow active:scale-95 transition-all hidden sm:block">
+          <Link href="/login" className="primary-gradient text-white px-6 py-2.5 rounded-xl text-sm font-bold ambient-shadow active:scale-95 transition-all hidden sm:block">
             Get Started
           </Link>
         </div>
@@ -65,14 +65,14 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link
-                href="/dashboard"
+                href="/login"
                 className="primary-gradient text-on-primary px-10 py-5 rounded-xl font-headline font-bold text-lg ambient-shadow hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 btn-press"
               >
                 Get Started
                 <span className="material-symbols-outlined">arrow_forward</span>
               </Link>
               <Link
-                href="/dashboard"
+                href="/login"
                 className="bg-surface-container-lowest text-on-background px-10 py-5 rounded-xl font-headline font-bold text-lg border border-outline-variant/20 ambient-shadow hover:bg-surface-container-low transition-all text-center active:scale-[0.98]"
               >
                 Log In

@@ -1,11 +1,43 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useToast } from "../components/ToastProvider";
 
+type SessionUser = {
+  id: number;
+  email: string;
+  balance: string;
+};
+
 export default function DashboardPage() {
   const toast = useToast();
+  const [user, setUser] = useState<SessionUser | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session")
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = (await res.json()) as { user?: SessionUser };
+        return data.user ?? null;
+      })
+      .then((nextUser) => {
+        if (active) setUser(nextUser);
+      })
+      .catch(() => {
+        if (active) setUser(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const formattedBalance = useMemo(() => {
+    const parsed = Number(user?.balance ?? 0);
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(parsed);
+  }, [user?.balance]);
 
   return (
     <AppShell>
@@ -20,8 +52,9 @@ export default function DashboardPage() {
                 Total Balance
               </p>
               <h2 className="text-5xl font-bold font-headline tracking-tight mb-2 animate-count-up">
-                $128,450.62
+                {formattedBalance}
               </h2>
+              <p className="text-xs opacity-80 mb-4">{user?.email ?? "Loading account..."}</p>
               <span className="inline-flex items-center gap-1 text-sm font-semibold bg-white/20 px-2 py-1 rounded-lg mb-8">
                 <span className="material-symbols-outlined text-sm">trending_up</span>
                 +2.4%
