@@ -11,11 +11,9 @@ export default function ProfilePage() {
     <AppShell>
       <div className="max-w-5xl mx-auto px-6 lg:px-12 py-8 space-y-8">
         <section className="flex items-center gap-5">
-          <img
-            alt="Profile avatar"
-            className="w-20 h-20 rounded-3xl object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7laqlxI9qFopTzyzkoehzFB4QZPEbcnSs9PIcAFaL0qTYaqBqN1s-yPWGT_cVzalJ_EgmB4je9ozTl3icEegg0q-KYqs3V1mZMk0q2L80p961O9s5DRtwU4O91JSYZTEoIzYMuFP0uZ1sYChDhKjY1Q0axYJZ3-_N2qNIKOX61wF4Nd5-j6ow9hA8MxAqut3g0w4Q84FWzcAS4HTZ1sWM4dxjcz_FT1keyWhvnz1hfUD9JRNOyje0pLpIAjFYwOU6ZfDmKO_oFYU"
-          />
+          <div className="w-20 h-20 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
+            <span className="material-symbols-outlined text-4xl">person</span>
+          </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-secondary">Profile</p>
             <h1 className="text-4xl font-headline font-extrabold tracking-tight">Ari Morgan</h1>

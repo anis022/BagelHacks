@@ -26,6 +26,9 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => setNotifications((v) => !v)}
+              role="switch"
+              aria-checked={notifications}
+              aria-label="Toggle push notifications"
               className={`px-4 py-2 rounded-xl font-bold ${notifications ? "bg-tertiary/10 text-on-tertiary-fixed-variant" : "bg-surface-container-high text-secondary"}`}
             >
               {notifications ? "Enabled" : "Disabled"}
@@ -41,6 +44,9 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => setBiometrics((v) => !v)}
+              role="switch"
+              aria-checked={biometrics}
+              aria-label="Toggle biometric sign-in"
               className={`px-4 py-2 rounded-xl font-bold ${biometrics ? "bg-tertiary/10 text-on-tertiary-fixed-variant" : "bg-surface-container-high text-secondary"}`}
             >
               {biometrics ? "Enabled" : "Disabled"}
