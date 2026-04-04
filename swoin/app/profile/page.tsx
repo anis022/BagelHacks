@@ -31,11 +31,14 @@ export default function ProfilePage() {
         </section>
 
         <section className="bg-surface-container-low rounded-[2rem] p-6 lg:p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ProfileField label="Email" value={error ?? user?.email ?? "Loading..."} />
+          <ProfileField label="Email" value={user?.email ?? "Loading..."} />
           <ProfileField label="Phone" value="+1 (415) 555-0192" />
           <ProfileField label="Country" value="United States" />
           <ProfileField label="Balance" value={user?.balance ? `${user.balance} USDC` : "0 USDC"} />
         </section>
+        {error ? (
+          <p className="text-sm text-error font-semibold">{error}</p>
+        ) : null}
 
         <section className="bg-surface-container-lowest rounded-[2rem] p-6 lg:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>

@@ -7,7 +7,7 @@ function getPool() {
 
   const host = process.env.PGHOST;
   const port = Number(process.env.PGPORT ?? "5432");
-  const user = process.env.PGUSER ?? "bagel";
+  const user = process.env.PGUSER;
   const database = process.env.PGDATABASE ?? "swoin";
   const password = process.env.PGPASSWORD;
   const sslMode = process.env.PGSSLMODE ?? "prefer";
@@ -18,6 +18,9 @@ function getPool() {
 
   if (!password) {
     throw new Error("PGPASSWORD is not configured");
+  }
+  if (!user) {
+    throw new Error("PGUSER is not configured");
   }
 
   pool = new Pool({

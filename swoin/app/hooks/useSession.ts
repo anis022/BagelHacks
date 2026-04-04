@@ -16,20 +16,25 @@ export function useSession() {
     let active = true;
     fetch("/api/auth/session")
       .then(async (res) => {
-        if (!res.ok) return null;
+        if (res.status === 401) {
+          return { user: null, error: "Session expired" };
+        }
+        if (!res.ok) {
+          return { user: null, error: "Session check failed" };
+        }
         const data = (await res.json()) as { user?: SessionUser };
-        return data.user ?? null;
+        return { user: data.user ?? null, error: null };
       })
-      .then((nextUser) => {
+      .then((result) => {
         if (active) {
-          setUser(nextUser);
-          setError(null);
+          setUser(result.user);
+          setError(result.error);
         }
       })
       .catch((err: unknown) => {
         if (active) {
           setUser(null);
-          setError("Unable to verify session");
+          setError("Network error while checking session");
         }
         console.error("Session fetch failed", err);
       });
