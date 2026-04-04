@@ -25,6 +25,8 @@ function StatusContent() {
   const bridgeName = params.get("bridgeName") ?? "";
   const fee = params.get("fee") ?? "0";
   const receive = params.get("receive") ?? amount;
+  const txHash = params.get("txHash") ?? "";
+  const sender = params.get("sender") ?? "";
 
   const fromChain = CHAINS.find((c) => c.id === fromChainId);
   const toChain = CHAINS.find((c) => c.id === toChainId);
@@ -66,6 +68,8 @@ function StatusContent() {
           <DetailRow label="Fee" value={`${fee} ${token}`} />
           <DetailRow label="You Receive" value={`${receive} ${token}`} highlight />
           <DetailRow label="Bridge" value={bridgeName} />
+          {sender && <DetailRow label="Sender Wallet" value={sender} />}
+          {txHash && <DetailRow label="Devnet Tx Hash" value={txHash} />}
           <div className="flex justify-between items-start gap-4 py-1">
             <span className="text-slate-400 text-sm flex-shrink-0">Recipient</span>
             <span className="text-white text-sm font-mono text-right break-all">{recipient}</span>

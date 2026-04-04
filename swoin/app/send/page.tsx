@@ -1,15 +1,38 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import {
+  clusterApiUrl,
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import { CHAINS } from "../data/chains";
 import { STABLECOINS } from "../data/stablecoins";
 import { findBridges } from "../utils/bridgeUtils";
 import { calculateFee, calculateReceiveAmount } from "../utils/bridgeUtils";
 import type { Bridge } from "../data/bridges";
 
+type SolanaProvider = {
+  isBraveWallet?: boolean;
+  isPhantom?: boolean;
+  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: PublicKey }>;
+  disconnect: () => Promise<void>;
+  publicKey?: PublicKey;
+  signAndSendTransaction: (
+    tx: Transaction,
+    options?: { skipPreflight?: boolean; preflightCommitment?: "processed" | "confirmed" | "finalized" }
+  ) => Promise<{ signature: string }>;
+};
+
 export default function SendPage() {
   const router = useRouter();
+  const [solanaProvider, setSolanaProvider] = useState<SolanaProvider | null>(null);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const [fromChain, setFromChain] = useState("ethereum");
   const [toChain, setToChain] = useState("polygon");
@@ -18,6 +41,21 @@ export default function SendPage() {
   const [recipient, setRecipient] = useState("");
   const [selectedBridgeId, setSelectedBridgeId] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSending, setIsSending] = useState(false);
+  const connection = useMemo(
+    () => new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl("devnet"), "confirmed"),
+    []
+  );
+
+  useEffect(() => {
+    const provider = (window as Window & { solana?: SolanaProvider }).solana;
+    if (provider && (provider.isBraveWallet || provider.isPhantom)) {
+      setSolanaProvider(provider);
+      if (provider.publicKey) {
+        setWalletAddress(provider.publicKey.toBase58());
+      }
+    }
+  }, []);
 
   const availableTokens = useMemo(() => {
     return STABLECOINS.filter(
@@ -60,26 +98,138 @@ export default function SendPage() {
     if (!token) e.token = "Required";
     if (!amount || numAmount <= 0) e.amount = "Enter a valid amount";
     if (!recipient.trim()) e.recipient = "Recipient address is required";
+    if (fromChain === "solana") {
+      if (!walletAddress || !solanaProvider) {
+        e.wallet = "Connect a Solana wallet to send on devnet";
+      } else {
+        try {
+          new PublicKey(recipient.trim());
+        } catch {
+          e.recipient = "Enter a valid Solana recipient address for devnet";
+        }
+      }
+    }
     if (!selectedBridge) e.bridge = "No bridge available for this route";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  function handleSend() {
+  async function handleSend() {
     if (!validate()) return;
-    const bridge = selectedBridge!;
-    const params = new URLSearchParams({
-      fromChain,
-      toChain,
-      token,
-      amount,
-      recipient: recipient.trim(),
-      bridge: bridge.id,
-      bridgeName: bridge.name,
-      fee: fee.toString(),
-      receive: receiveAmount.toString(),
-    });
-    router.push(`/send/status?${params.toString()}`);
+    setIsSending(true);
+    let txHash = "";
+
+    try {
+      if (fromChain === "solana") {
+        if (!solanaProvider || !walletAddress) throw new Error("Wallet not connected");
+        const fromPubkey = new PublicKey(walletAddress);
+        const toPubkey = new PublicKey(recipient.trim());
+        const lamports = Math.max(5000, Math.floor(0.001 * LAMPORTS_PER_SOL));
+
+        const { blockhash } = await connection.getLatestBlockhash("confirmed");
+        const tx = new Transaction({
+          feePayer: fromPubkey,
+          recentBlockhash: blockhash,
+        }).add(
+          SystemProgram.transfer({
+            fromPubkey,
+            toPubkey,
+            lamports,
+          })
+        );
+
+        const res = await solanaProvider.signAndSendTransaction(tx, {
+          preflightCommitment: "confirmed",
+        });
+        txHash = res.signature;
+        await connection.confirmTransaction(txHash, "confirmed");
+      }
+
+      const bridge = selectedBridge!;
+      const transferRes = await fetch("/api/transfers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromChain,
+          toChain,
+          token,
+          amount,
+          recipient: recipient.trim(),
+          bridge: bridge.id,
+          bridgeName: bridge.name,
+          fee: fee.toString(),
+          receiveAmount: receiveAmount.toString(),
+          txHash: txHash || undefined,
+          status: txHash ? "processing" : "pending",
+        }),
+      });
+
+      let transferId = "";
+      if (transferRes.ok) {
+        const payload = await transferRes.json();
+        transferId = payload?.transfer?.id ?? "";
+      }
+
+      const params = new URLSearchParams({
+        fromChain,
+        toChain,
+        token,
+        amount,
+        recipient: recipient.trim(),
+        bridge: bridge.id,
+        bridgeName: bridge.name,
+        fee: fee.toString(),
+        receive: receiveAmount.toString(),
+        txHash,
+        sender: walletAddress,
+        transferId,
+      });
+      router.push(`/send/status?${params.toString()}`);
+    } catch (err) {
+      setErrors((prev) => ({
+        ...prev,
+        send: err instanceof Error ? err.message : "Failed to send transfer",
+      }));
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  async function handleConnectWallet() {
+    if (!solanaProvider) {
+      setErrors((prev) => ({
+        ...prev,
+        wallet: "No Solana wallet found. Install Brave Wallet or Phantom and reload.",
+      }));
+      return;
+    }
+
+    setIsConnecting(true);
+    try {
+      const res = await solanaProvider.connect();
+      setWalletAddress(res.publicKey.toBase58());
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.wallet;
+        return next;
+      });
+    } catch (err) {
+      setErrors((prev) => ({
+        ...prev,
+        wallet: err instanceof Error ? err.message : "Failed to connect wallet",
+      }));
+    } finally {
+      setIsConnecting(false);
+    }
+  }
+
+  async function handleDisconnectWallet() {
+    if (!solanaProvider) return;
+    try {
+      await solanaProvider.disconnect();
+    } finally {
+      setWalletAddress("");
+    }
   }
 
   const securityColor: Record<string, string> = {
@@ -207,6 +357,41 @@ export default function SendPage() {
             {errors.recipient && <p className="text-red-400 text-xs mt-1">{errors.recipient}</p>}
           </div>
 
+          {fromChain === "solana" && (
+            <div className="rounded-xl border border-cyan-500/30 p-4" style={{ backgroundColor: "rgba(6,182,212,0.08)" }}>
+              <p className="text-cyan-300 text-sm font-semibold">Solana Devnet Wallet</p>
+              <p className="text-slate-300 text-xs mt-1">
+                Connect Brave Wallet or Phantom. Sending from Solana signs and submits a devnet transfer from your connected wallet.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                {!walletAddress ? (
+                  <button
+                    type="button"
+                    onClick={handleConnectWallet}
+                    disabled={isConnecting}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-white border border-white/20 bg-slate-800 hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    {isConnecting ? "Connecting..." : "Connect Wallet"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleDisconnectWallet}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-white border border-white/20 bg-slate-800 hover:bg-slate-700"
+                  >
+                    Disconnect
+                  </button>
+                )}
+              </div>
+              {walletAddress && (
+                <p className="text-xs text-slate-400 mt-2 break-all font-mono">
+                  Sender wallet: {walletAddress}
+                </p>
+              )}
+              {errors.wallet && <p className="text-red-400 text-xs mt-2">{errors.wallet}</p>}
+            </div>
+          )}
+
           {/* Bridge Picker */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-2">
@@ -293,12 +478,13 @@ export default function SendPage() {
           {/* Send Button */}
           <button
             onClick={handleSend}
-            disabled={availableTokens.length === 0 || bridges.length === 0}
+            disabled={availableTokens.length === 0 || bridges.length === 0 || isSending}
             className="w-full py-4 rounded-xl font-bold text-white text-base transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
             style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
           >
-            Send {token} →
+            {isSending ? "Sending..." : `Send ${token} →`}
           </button>
+          {errors.send && <p className="text-red-400 text-xs mt-1">{errors.send}</p>}
         </div>
       </div>
     </main>
