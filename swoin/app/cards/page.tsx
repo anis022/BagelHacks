@@ -18,7 +18,7 @@ export default function CardsPage() {
         <section className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-secondary">Payment methods</p>
-            <h1 className="text-4xl font-headline font-extrabold tracking-tight">Your Payment methods</h1>
+            <h1 className="text-4xl font-headline font-extrabold tracking-tight">Your payment methods</h1>
           </div>
           <button
             onClick={() => toast("New card request submitted")}

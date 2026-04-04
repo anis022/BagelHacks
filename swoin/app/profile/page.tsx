@@ -44,7 +44,7 @@ export default function ProfilePage() {
               Security Settings
             </Link>
             <Link href="/cards" className="px-5 py-3 rounded-xl bg-surface-container-high font-bold">
-              My Payment methods
+              My payment methods
             </Link>
           </div>
         </section>
