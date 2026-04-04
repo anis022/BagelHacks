@@ -4,7 +4,11 @@
       "WebFetch(domain:stitch.withgoogle.com)",
       "Bash(curl:*)",
       "Bash(npx next:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ls /home/dilyxs/programming/tmp/bagalhacks/swoin/.env*)",
+      "WebFetch(domain:docs.crossmint.com)",
+      "WebFetch(domain:plaid.com)",
+      "Bash(PGPASSWORD=bagelhacks psql:*)"
     ]
   }
 }
