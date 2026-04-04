@@ -1,5 +1,6 @@
 import { CHAIN_CONFIG } from "./chainConfig";
 import { BRIDGES } from "../data/bridges";
+import { STABLECOINS } from "../data/stablecoins";
 import { findBridges, calculateFee, calculateReceiveAmount } from "../utils/bridgeUtils";
 
 export type QuoteRequest = {
@@ -72,6 +73,10 @@ function estimatedTimeToSeconds(str: string): number {
   const match = str.match(/(\d+)/);
   if (!match) return 180;
   return parseInt(match[1]) * 60;
+}
+
+function getTokenDecimals(token: string): number {
+  return STABLECOINS.find((stablecoin) => stablecoin.symbol === token)?.decimals ?? 6;
 }
 
 function buildMockQuotes(req: QuoteRequest): QuoteResult[] {
@@ -182,8 +187,7 @@ export async function getQuotes(req: QuoteRequest): Promise<QuoteResult[]> {
     const fromTokenAddress = getTokenAddress(req.fromChain, req.token);
     const toTokenAddress = getTokenAddress(req.toChain, req.token);
 
-    // Determine decimals for amount conversion
-    const decimals = req.token === "DAI" ? 18 : 6;
+    const decimals = getTokenDecimals(req.token);
     const fromAmount = BigInt(
       Math.round(parseFloat(req.amount) * Math.pow(10, decimals))
     ).toString();

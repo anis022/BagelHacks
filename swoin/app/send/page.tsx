@@ -28,6 +28,9 @@ type SolanaProvider = {
   ) => Promise<{ signature: string }>;
 };
 
+const DEVNET_MIN_LAMPORTS = 5_000;
+const DEVNET_DEMO_TRANSFER_SOL = 0.001;
+
 export default function SendPage() {
   const router = useRouter();
   const [solanaProvider, setSolanaProvider] = useState<SolanaProvider | null>(null);
@@ -124,7 +127,10 @@ export default function SendPage() {
         if (!solanaProvider || !walletAddress) throw new Error("Wallet not connected");
         const fromPubkey = new PublicKey(walletAddress);
         const toPubkey = new PublicKey(recipient.trim());
-        const lamports = Math.max(5000, Math.floor(0.001 * LAMPORTS_PER_SOL));
+        const lamports = Math.max(
+          DEVNET_MIN_LAMPORTS,
+          Math.floor(DEVNET_DEMO_TRANSFER_SOL * LAMPORTS_PER_SOL)
+        );
 
         const { blockhash } = await connection.getLatestBlockhash("confirmed");
         const tx = new Transaction({

@@ -3,6 +3,7 @@ export type Stablecoin = {
   name: string;
   logo: string;
   peg: string;
+  decimals: number;
   chains: string[];
 };
 
@@ -12,6 +13,7 @@ export const STABLECOINS: Stablecoin[] = [
     name: "USD Coin",
     logo: "🔵",
     peg: "USD",
+    decimals: 6,
     chains: ["ethereum", "base", "polygon", "arbitrum", "optimism", "avalanche", "solana"],
   },
   {
@@ -19,6 +21,7 @@ export const STABLECOINS: Stablecoin[] = [
     name: "Tether USD",
     logo: "💚",
     peg: "USD",
+    decimals: 6,
     chains: ["ethereum", "polygon", "arbitrum", "optimism", "avalanche", "solana", "bnb"],
   },
   {
@@ -26,6 +29,7 @@ export const STABLECOINS: Stablecoin[] = [
     name: "PayPal USD",
     logo: "🅿️",
     peg: "USD",
+    decimals: 6,
     chains: ["ethereum", "solana"],
   },
   {
@@ -33,6 +37,7 @@ export const STABLECOINS: Stablecoin[] = [
     name: "Euro Coin",
     logo: "🇪🇺",
     peg: "EUR",
+    decimals: 6,
     chains: ["ethereum", "base", "avalanche", "solana"],
   },
   {
@@ -40,6 +45,7 @@ export const STABLECOINS: Stablecoin[] = [
     name: "Dai Stablecoin",
     logo: "🟡",
     peg: "USD",
+    decimals: 18,
     chains: ["ethereum", "base", "polygon", "arbitrum", "optimism", "avalanche", "bnb"],
   },
 ];
