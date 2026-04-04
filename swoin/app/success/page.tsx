@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useToast } from "../components/ToastProvider";
 
-export default function SuccessPage() {
+function SuccessPageContent() {
   const toast = useToast();
   const searchParams = useSearchParams();
   const amount = searchParams.get("amount") || "$2,450.00";
@@ -146,5 +147,13 @@ export default function SuccessPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<div className="bg-background min-h-screen" />}>
+      <SuccessPageContent />
+    </Suspense>
   );
 }

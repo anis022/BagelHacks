@@ -2,31 +2,28 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useToast } from "../components/ToastProvider";
 
 const currencies = ["USD", "EUR", "GBP"] as const;
 
-export default function ReviewPage() {
+function ReviewPageContent() {
   const toast = useToast();
   const searchParams = useSearchParams();
   const [activeCurrency, setActiveCurrency] = useState<typeof currencies[number]>("USD");
+
   const recipientName = searchParams.get("recipient") || "Julianne Sterling";
   const recipientHandle = searchParams.get("handle") || "@julianne.sterling";
   const note = searchParams.get("note") || "";
-  const amountParam = searchParams.get("amount");
-  const parsedAmount = Number.parseFloat(amountParam ?? "");
+  const amount = searchParams.get("amount") || "2450.00";
+  const parsedAmount = Number.parseFloat(amount);
   const baseUsdAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 2450;
-  const formattedUsd = `$${baseUsdAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const formattedEur = `€${(baseUsdAmount * 0.92).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const formattedGbp = `£${(baseUsdAmount * 0.789).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  const amounts: Record<(typeof currencies)[number], string> = {
-    USD: formattedUsd,
-    EUR: formattedEur,
-    GBP: formattedGbp,
-  };
+  const amounts = useMemo<Record<(typeof currencies)[number], string>>(() => ({
+    USD: `$${baseUsdAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    EUR: `€${(baseUsdAmount * 0.92).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    GBP: `£${(baseUsdAmount * 0.789).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+  }), [baseUsdAmount]);
 
   const rates: Record<string, string> = {
     USD: "1 USD = 1.00 USD",
@@ -296,5 +293,19 @@ export default function ReviewPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="max-w-6xl mx-auto px-6 lg:px-12 py-8">Loading...</div>
+        </AppShell>
+      }
+    >
+      <ReviewPageContent />
+    </Suspense>
   );
 }
