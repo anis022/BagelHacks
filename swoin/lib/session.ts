@@ -9,7 +9,7 @@ type SessionPayload = {
 };
 
 function getSessionSecret() {
-  return process.env.SESSION_SECRET || "sovereign-demo-secret-do-not-use-in-production";
+  return process.env.SESSION_SECRET || "swoin-demo-secret-do-not-use-in-production";
 }
 
 function toBase64Url(value: string) {

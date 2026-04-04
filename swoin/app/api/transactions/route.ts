@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSessionCookieName, verifySessionToken } from "@/lib/session";
-import { getTransactions } from "@/lib/db";
+import { getTransactions, getWithdrawals } from "@/lib/db";
 
 export async function GET() {
   try {
@@ -12,8 +12,12 @@ export async function GET() {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const transactions = await getTransactions(session.userId);
-    return NextResponse.json({ transactions, userId: session.userId });
+    const [transactions, withdrawals] = await Promise.all([
+      getTransactions(session.userId),
+      getWithdrawals(session.userId),
+    ]);
+
+    return NextResponse.json({ transactions, withdrawals, userId: session.userId });
   } catch {
     return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
   }

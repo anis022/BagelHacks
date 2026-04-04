@@ -17,13 +17,29 @@ type Transaction = {
   created_at: string;
 };
 
+type Withdrawal = {
+  id: number;
+  method_label: string;
+  amount: string;
+  created_at: string;
+};
+
+type ActivityItem = {
+  key: string;
+  type: "sent" | "received" | "cashout";
+  label: string;
+  amount: string;
+  date: string;
+  icon: string;
+};
+
 export default function ActivityPage() {
   const toast = useToast();
   const router = useRouter();
   const { error } = useSession();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [filter, setFilter] = useState<"all" | "sent" | "received">("all");
+  const [items, setItems] = useState<ActivityItem[]>([]);
+  const [filter, setFilter] = useState<"all" | "sent" | "received" | "cashout">("all");
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (error === "Not authenticated") {
@@ -33,19 +49,38 @@ export default function ActivityPage() {
 
   useEffect(() => {
     fetch("/api/transactions")
-      .then((res) => (res.ok ? res.json() : { transactions: [], userId: null }))
-      .then((data: { transactions: Transaction[]; userId: number | null }) => {
-        setTransactions(data.transactions ?? []);
-        setUserId(data.userId);
+      .then((res) => (res.ok ? res.json() : { transactions: [], withdrawals: [], userId: null }))
+      .then((data: { transactions: Transaction[]; withdrawals: Withdrawal[]; userId: number | null }) => {
+        const uid = data.userId;
+        const txItems: ActivityItem[] = (data.transactions ?? []).map((t) => {
+          const isSender = t.sender_id === uid;
+          return {
+            key: `tx-${t.id}`,
+            type: isSender ? "sent" : "received",
+            label: isSender ? t.receiver_email : t.sender_email,
+            amount: `${isSender ? "-" : "+"}${Number(t.amount).toLocaleString()} USDM`,
+            date: t.created_at,
+            icon: isSender ? "north_east" : "south_west",
+          };
+        });
+        const wItems: ActivityItem[] = (data.withdrawals ?? []).map((w) => ({
+          key: `wd-${w.id}`,
+          type: "cashout",
+          label: w.method_label,
+          amount: `-${Number(w.amount).toLocaleString()} USDM`,
+          date: w.created_at,
+          icon: "account_balance",
+        }));
+        const all = [...txItems, ...wItems].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        );
+        setItems(all);
+        setLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => setLoaded(true));
   }, []);
 
-  const filtered = transactions.filter((t) => {
-    if (filter === "sent") return t.sender_id === userId;
-    if (filter === "received") return t.receiver_id === userId;
-    return true;
-  });
+  const filtered = items.filter((i) => filter === "all" || i.type === filter);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -53,6 +88,25 @@ export default function ActivityPage() {
       " \u00b7 " +
       d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   };
+
+  const typeLabel = (t: ActivityItem["type"]) =>
+    t === "sent" ? "Sent" : t === "received" ? "Received" : "Cash Out";
+
+  const typeColor = (t: ActivityItem["type"]) =>
+    t === "received" ? "text-tertiary" : "text-on-background";
+
+  const badgeClass = (t: ActivityItem["type"]) =>
+    t === "received"
+      ? "bg-tertiary/10 text-on-tertiary-fixed-variant"
+      : t === "cashout"
+      ? "bg-orange-100 text-orange-700"
+      : "bg-primary/10 text-primary";
+
+  const iconBg = (t: ActivityItem["type"]) =>
+    t === "received" ? "bg-tertiary/10" : t === "cashout" ? "bg-orange-100" : "bg-primary/10";
+
+  const iconColor = (t: ActivityItem["type"]) =>
+    t === "received" ? "text-tertiary" : t === "cashout" ? "text-orange-600" : "text-primary";
 
   return (
     <AppShell>
@@ -66,13 +120,13 @@ export default function ActivityPage() {
           </div>
           <div className="hidden lg:block">
             <h2 className="text-4xl font-headline font-extrabold tracking-tight text-on-background mb-2">Transaction History</h2>
-            <p className="text-on-surface-variant">All your USDM transactions in one place.</p>
+            <p className="text-on-surface-variant">All your USDM activity in one place.</p>
           </div>
         </header>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-8 animate-fade-in-up delay-100">
-          {(["all", "sent", "received"] as const).map((f) => (
+        <div className="flex gap-2 mb-8 flex-wrap animate-fade-in-up delay-100">
+          {(["all", "sent", "received", "cashout"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -82,69 +136,62 @@ export default function ActivityPage() {
                   : "bg-surface-container-low text-secondary hover:bg-surface-container-high active:scale-95"
               }`}
             >
-              {f}
+              {f === "cashout" ? "Cash Out" : f}
             </button>
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {!loaded ? (
+          <div className="text-center py-16">
+            <span className="material-symbols-outlined text-4xl text-outline-variant animate-spin">progress_activity</span>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20 animate-fade-in-up delay-200">
             <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">receipt_long</span>
-            <p className="text-on-surface-variant font-medium text-lg">No transactions yet</p>
+            <p className="text-on-surface-variant font-medium text-lg">No activity yet</p>
             <p className="text-sm text-outline mt-2 mb-8">
               {filter === "all"
-                ? "Send or receive USDM to see your activity here."
+                ? "Send, receive, or cash out USDM to see your activity here."
+                : filter === "cashout"
+                ? "You haven't made any withdrawals yet."
                 : filter === "sent"
                 ? "You haven't sent any USDM yet."
                 : "You haven't received any USDM yet."}
             </p>
             <Link
-              href="/send"
+              href={filter === "cashout" ? "/cashout" : "/send"}
               className="inline-flex items-center gap-2 primary-gradient text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all"
             >
-              <span className="material-symbols-outlined text-sm">send</span>
-              Send Payment
+              <span className="material-symbols-outlined text-sm">{filter === "cashout" ? "swap_horiz" : "send"}</span>
+              {filter === "cashout" ? "Cash Out" : "Send Payment"}
             </Link>
           </div>
         ) : (
           <div className="space-y-4 animate-fade-in-up delay-200">
-            {filtered.map((t, i) => {
-              const isSender = t.sender_id === userId;
-              const otherEmail = isSender ? t.receiver_email : t.sender_email;
-              const amountNum = Number(t.amount);
-              const amountStr = isSender
-                ? `-${amountNum.toLocaleString()} USDM`
-                : `+${amountNum.toLocaleString()} USDM`;
-
-              return (
-                <div
-                  key={t.id}
-                  className="bg-surface-container-lowest rounded-2xl p-5 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer animate-fade-in-up"
-                  style={{ animationDelay: `${(i + 1) * 60}ms` }}
-                  onClick={() => toast(`Transaction #${t.id}`)}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isSender ? "bg-primary/10" : "bg-tertiary/10"}`}>
-                      <span className={`material-symbols-outlined ${isSender ? "text-primary" : "text-tertiary"}`}>
-                        {isSender ? "north_east" : "south_west"}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-on-background">{otherEmail}</p>
-                      <p className="text-xs text-on-surface-variant">{formatDate(t.created_at)}</p>
-                    </div>
+            {filtered.map((item, i) => (
+              <div
+                key={item.key}
+                className="bg-surface-container-lowest rounded-2xl p-5 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer animate-fade-in-up"
+                style={{ animationDelay: `${(i + 1) * 60}ms` }}
+                onClick={() => toast(`Transaction ${item.key}`)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconBg(item.type)}`}>
+                    <span className={`material-symbols-outlined ${iconColor(item.type)}`}>{item.icon}</span>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-bold text-lg ${isSender ? "text-on-background" : "text-tertiary"}`}>
-                      {amountStr}
-                    </p>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${isSender ? "bg-primary/10 text-primary" : "bg-tertiary/10 text-on-tertiary-fixed-variant"}`}>
-                      {isSender ? "Sent" : "Received"}
-                    </span>
+                  <div>
+                    <p className="font-bold text-on-background">{item.label}</p>
+                    <p className="text-xs text-on-surface-variant">{formatDate(item.date)}</p>
                   </div>
                 </div>
-              );
-            })}
+                <div className="text-right">
+                  <p className={`font-bold text-lg ${typeColor(item.type)}`}>{item.amount}</p>
+                  <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${badgeClass(item.type)}`}>
+                    {typeLabel(item.type)}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

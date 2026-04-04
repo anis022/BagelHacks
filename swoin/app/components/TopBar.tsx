@@ -75,7 +75,7 @@ export default function TopBar() {
         <div className="w-10 h-10 primary-gradient rounded-xl flex items-center justify-center text-white">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
         </div>
-        <h1 className="text-xl font-bold text-on-background font-headline">Sovereign</h1>
+        <h1 className="text-xl font-bold text-on-background font-headline">Swoin</h1>
       </Link>
 
       {/* Desktop: Search */}

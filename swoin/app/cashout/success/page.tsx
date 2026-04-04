@@ -3,14 +3,21 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../../components/ToastProvider";
 
-function SuccessPageContent() {
+const typeIcons: Record<string, string> = {
+  bank: "account_balance",
+  card: "credit_card",
+  wallet: "payments",
+};
+
+function CashoutSuccessContent() {
   const toast = useToast();
   const searchParams = useSearchParams();
   const amount = searchParams.get("amount") || "0.00 USDM";
-  const recipient = searchParams.get("recipient") || "Unknown";
-  const txId = `SV-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+  const methodLabel = searchParams.get("methodLabel") || "Payment Method";
+  const methodType = searchParams.get("methodType") || "bank";
+  const txId = `SW-${Date.now().toString(36).toUpperCase().slice(-8)}`;
 
   const copyTxId = async () => {
     try {
@@ -23,8 +30,8 @@ function SuccessPageContent() {
 
   const shareReceipt = async () => {
     const shareData = {
-      title: "Swoin Payment Receipt",
-      text: `Payment of ${amount} to ${recipient} — Transaction ID: ${txId}`,
+      title: "Swoin Withdrawal Receipt",
+      text: `Withdrawal of ${amount} to ${methodLabel} — Transaction ID: ${txId}`,
     };
     try {
       if (navigator.share) {
@@ -34,13 +41,12 @@ function SuccessPageContent() {
         toast("Receipt copied to clipboard!");
       }
     } catch {
-      // User cancelled share
+      // User cancelled
     }
   };
 
   return (
     <div className="bg-background min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Background decorations */}
       <div className="absolute top-20 right-20 w-96 h-96 bg-primary/5 rounded-full blur-[100px]" />
       <div className="absolute bottom-10 left-10 w-64 h-64 bg-tertiary/5 rounded-full blur-[80px]" />
       <div className="fixed top-[-10%] right-[-5%] w-[400px] h-[400px] bg-primary-fixed opacity-10 rounded-full blur-[100px] pointer-events-none" />
@@ -65,27 +71,28 @@ function SuccessPageContent() {
         </div>
 
         <h2 className="text-4xl lg:text-5xl font-headline font-extrabold tracking-tight text-on-background mb-4 animate-fade-in-up delay-200">
-          Payment Sent!
+          Withdrawal Sent!
         </h2>
         <p className="text-on-surface-variant text-lg mb-12 max-w-md mx-auto animate-fade-in-up delay-300">
-          Your USDM transfer has been successfully processed and delivered on-ledger.
+          Your USDM has been withdrawn and is being transferred to your payment method.
         </p>
 
-        {/* Transaction Summary */}
+        {/* Receipt */}
         <div className="w-full bg-surface-container-low rounded-[2rem] p-8 mb-12 text-left relative overflow-hidden animate-fade-in-up delay-400">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-2">Amount Sent</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-2">Amount Withdrawn</span>
               <h3 className="text-4xl font-headline font-bold text-on-background">{amount}</h3>
             </div>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary text-2xl">person</span>
+                <span className="material-symbols-outlined text-primary text-2xl">{typeIcons[methodType] ?? "payments"}</span>
               </div>
               <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-1">Recipient</span>
-                <p className="font-headline font-bold text-lg">{recipient}</p>
+                <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-1">Destination</span>
+                <p className="font-headline font-bold text-lg">{methodLabel}</p>
+                <p className="text-sm text-on-surface-variant capitalize">{methodType}</p>
               </div>
             </div>
           </div>
@@ -99,7 +106,7 @@ function SuccessPageContent() {
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 block">Status</span>
-                <p className="text-tertiary font-bold">Completed</p>
+                <p className="text-tertiary font-bold">Processing</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -140,17 +147,17 @@ function SuccessPageContent() {
         </div>
 
         <p className="mt-12 text-on-surface-variant/60 text-xs font-medium max-w-xs mx-auto animate-fade-in delay-700">
-          A confirmation has been recorded on-ledger. USDM transfers settle instantly.
+          Bank transfers typically arrive within 1-3 business days. Card withdrawals are processed instantly.
         </p>
       </div>
     </div>
   );
 }
 
-export default function SuccessPage() {
+export default function CashoutSuccessPage() {
   return (
     <Suspense fallback={<div className="bg-background min-h-screen" />}>
-      <SuccessPageContent />
+      <CashoutSuccessContent />
     </Suspense>
   );
 }

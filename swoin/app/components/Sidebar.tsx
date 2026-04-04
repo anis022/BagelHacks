@@ -26,10 +26,10 @@ export default function Sidebar() {
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tighter text-on-background font-headline">
-            Sovereign
+            Swoin
           </h1>
           <p className="text-[10px] uppercase tracking-widest text-secondary font-bold opacity-60">
-            Fluid Ledger
+            Borderless Pay
           </p>
         </div>
       </Link>

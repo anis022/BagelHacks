@@ -7,11 +7,18 @@ import AppShell from "../components/AppShell";
 import { useToast } from "../components/ToastProvider";
 import { useSession } from "../hooks/useSession";
 
-const paymentMethods = [
-  { id: "visa", label: "Visa •••• 4821", icon: "credit_card", type: "Debit Card" },
-  { id: "bank", label: "Chase •••• 9031", icon: "account_balance", type: "Bank Account" },
-  { id: "paypal", label: "PayPal", icon: "payments", type: "Digital Wallet" },
-];
+type PaymentMethod = {
+  id: number;
+  type: string;
+  label: string;
+  details: string;
+};
+
+const typeIcons: Record<string, string> = {
+  bank: "account_balance",
+  card: "credit_card",
+  wallet: "payments",
+};
 
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"];
 
@@ -20,14 +27,24 @@ export default function CashoutPage() {
   const router = useRouter();
   const { user, error } = useSession();
   const [amount, setAmount] = useState("");
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<number | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [loadingMethods, setLoadingMethods] = useState(true);
 
   useEffect(() => {
     if (error === "Not authenticated") {
       router.replace("/login?next=/cashout");
     }
   }, [error, router]);
+
+  useEffect(() => {
+    fetch("/api/payment-methods")
+      .then((res) => (res.ok ? res.json() : { methods: [] }))
+      .then((data: { methods: PaymentMethod[] }) => setMethods(data.methods ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingMethods(false));
+  }, []);
 
   const balanceNum = Number(user?.balance ?? 0);
   const parsedAmount = parseFloat(amount);
@@ -56,14 +73,15 @@ export default function CashoutPage() {
   };
 
   const handleCashout = () => {
-    setProcessing(true);
-    const method = paymentMethods.find((m) => m.id === selectedMethod);
-    setTimeout(() => {
-      toast(`${normalizedAmount.toLocaleString()} USDM withdrawn to ${method?.label}`);
-      setProcessing(false);
-      setAmount("");
-      setSelectedMethod(null);
-    }, 1500);
+    const method = methods.find((m) => m.id === selectedMethod);
+    if (!method) return;
+    const params = new URLSearchParams({
+      amount: normalizedAmount.toFixed(2),
+      methodId: String(method.id),
+      methodLabel: method.label,
+      methodType: method.type,
+    });
+    router.push(`/cashout/review?${params.toString()}`);
   };
 
   return (
@@ -78,7 +96,7 @@ export default function CashoutPage() {
           </div>
           <div className="hidden lg:block">
             <h2 className="text-4xl font-headline font-extrabold tracking-tight text-on-background mb-2">Cash Out USDM</h2>
-            <p className="text-on-surface-variant">Withdraw USDM to your bank account or card.</p>
+            <p className="text-on-surface-variant">Withdraw USDM to one of your linked payment methods.</p>
           </div>
         </header>
 
@@ -87,43 +105,57 @@ export default function CashoutPage() {
           <section className="space-y-6 animate-fade-in-up delay-100">
             <div className="bg-surface-container-low rounded-[2rem] p-6 lg:p-8">
               <h3 className="text-lg font-headline font-bold text-on-background mb-6">Withdraw to</h3>
-              <div className="space-y-3">
-                {paymentMethods.map((method) => {
-                  const isSelected = selectedMethod === method.id;
-                  return (
-                    <button
-                      key={method.id}
-                      onClick={() => setSelectedMethod(isSelected ? null : method.id)}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-left active:scale-[0.98] ${
-                        isSelected
-                          ? "bg-primary/10 ring-2 ring-primary"
-                          : "bg-surface-container-lowest hover:bg-surface-container-high"
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isSelected ? "bg-primary/20" : "bg-surface-container-highest"}`}>
-                        <span className={`material-symbols-outlined ${isSelected ? "text-primary" : "text-secondary"}`}>{method.icon}</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className={`font-bold ${isSelected ? "text-primary" : "text-on-background"}`}>{method.label}</p>
-                        <p className="text-xs text-on-surface-variant">{method.type}</p>
-                      </div>
-                      {isSelected && (
-                        <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                onClick={() => toast("Add payment method")}
-                className="w-full mt-4 flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-dashed border-outline-variant/30 text-secondary hover:bg-surface-container-high transition-colors active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined">add</span>
-                <span className="font-bold text-sm">Add Payment Method</span>
-              </button>
+
+              {loadingMethods ? (
+                <div className="text-center py-8">
+                  <span className="material-symbols-outlined text-3xl text-outline-variant animate-spin">progress_activity</span>
+                </div>
+              ) : methods.length === 0 ? (
+                <div className="text-center py-8">
+                  <span className="material-symbols-outlined text-4xl text-outline-variant mb-3">credit_card_off</span>
+                  <p className="text-on-surface-variant font-medium">No payment methods linked</p>
+                  <p className="text-sm text-outline mt-1 mb-6">Connect a bank account or card first.</p>
+                  <Link
+                    href="/cards"
+                    className="inline-flex items-center gap-2 primary-gradient text-white px-5 py-3 rounded-xl font-bold active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Add Payment Method
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {methods.map((method) => {
+                    const isSelected = selectedMethod === method.id;
+                    return (
+                      <button
+                        key={method.id}
+                        onClick={() => setSelectedMethod(isSelected ? null : method.id)}
+                        className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-left active:scale-[0.98] ${
+                          isSelected
+                            ? "bg-primary/10 ring-2 ring-primary"
+                            : "bg-surface-container-lowest hover:bg-surface-container-high"
+                        }`}
+                      >
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isSelected ? "bg-primary/20" : "bg-surface-container-highest"}`}>
+                          <span className={`material-symbols-outlined ${isSelected ? "text-primary" : "text-secondary"}`}>
+                            {typeIcons[method.type] ?? "payments"}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-bold ${isSelected ? "text-primary" : "text-on-background"}`}>{method.label}</p>
+                          <p className="text-xs text-on-surface-variant capitalize">{method.type}</p>
+                        </div>
+                        {isSelected && (
+                          <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {/* Info */}
             <div className="flex items-center gap-4 px-4 animate-fade-in delay-400">
               <div className="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary">
                 <span className="material-symbols-outlined">info</span>
@@ -161,7 +193,6 @@ export default function CashoutPage() {
                 )}
               </div>
 
-              {/* Keypad */}
               <div className="grid grid-cols-3 gap-3 mb-8">
                 {keys.map((k) => (
                   <button
@@ -178,7 +209,6 @@ export default function CashoutPage() {
                 ))}
               </div>
 
-              {/* CTA */}
               {canCashout ? (
                 <button
                   onClick={handleCashout}
@@ -192,7 +222,7 @@ export default function CashoutPage() {
                   disabled
                   className="w-full bg-outline-variant/30 text-outline py-5 rounded-2xl font-headline font-extrabold text-lg cursor-not-allowed"
                 >
-                  {!selectedMethod ? "Select a method" : normalizedAmount <= 0 ? "Enter an amount" : "Insufficient balance"}
+                  {methods.length === 0 ? "No payment method" : !selectedMethod ? "Select a method" : normalizedAmount <= 0 ? "Enter an amount" : "Insufficient balance"}
                 </button>
               )}
             </div>

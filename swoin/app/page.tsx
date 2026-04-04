@@ -14,10 +14,10 @@ export default function LandingPage() {
       <nav className="flex justify-between items-center px-6 lg:px-12 w-full z-40 fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold tracking-tighter text-on-background font-headline">
-            Sovereign
+            Swoin
           </span>
           <span className="text-primary text-xs font-semibold px-2 py-0.5 bg-surface-container-high rounded-full">
-            FLUIDITY
+            PAY
           </span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-headline font-medium">
@@ -91,7 +91,7 @@ export default function LandingPage() {
               </div>
               <div>
                 <div className="text-on-background font-bold">2M+ Active Users</div>
-                <div className="text-on-surface-variant text-sm">Trusting Sovereign for global liquidity.</div>
+                <div className="text-on-surface-variant text-sm">Trusting Swoin for global liquidity.</div>
               </div>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function LandingPage() {
       <footer className="bg-surface-container-low py-16 px-6 md:px-12 lg:px-24">
         <div className="max-w-[1440px] mx-auto grid md:grid-cols-4 gap-12">
           <div className="space-y-6">
-            <span className="text-xl font-bold tracking-tighter text-on-background font-headline">Sovereign</span>
+            <span className="text-xl font-bold tracking-tighter text-on-background font-headline">Swoin</span>
             <p className="text-on-surface-variant text-sm leading-relaxed">The premium standard for cross-border financial architecture.</p>
           </div>
           <div>
@@ -233,7 +233,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="max-w-[1440px] mx-auto pt-16 mt-16 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-outline">
-          <div>&copy; 2024 Sovereign Fluidity Framework. All rights reserved.</div>
+          <div>&copy; 2024 Swoin. All rights reserved.</div>
           <div className="flex gap-8">
             <button onClick={quickAction("Terms of Service")} className="hover:text-on-surface transition-colors">Terms of Service</button>
             <button onClick={quickAction("Compliance")} className="hover:text-on-surface transition-colors">Compliance</button>

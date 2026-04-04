@@ -11,7 +11,7 @@ export default function TermsPage() {
           <p className="text-xs font-bold uppercase tracking-widest text-secondary">Legal</p>
           <h1 className="text-4xl font-headline font-extrabold tracking-tight">Terms &amp; Conditions</h1>
           <p className="text-sm text-on-surface-variant mt-2">
-            These terms govern use of Sovereign payment services across supported regions.
+            These terms govern use of Swoin payment services across supported regions.
           </p>
         </section>
 

@@ -162,3 +162,143 @@ export async function getTransactions(userId: number): Promise<Transaction[]> {
   );
   return result.rows;
 }
+
+// --- Payment Methods ---
+
+export type PaymentMethod = {
+  id: number;
+  user_id: number;
+  type: string;
+  label: string;
+  details: string;
+  created_at: string;
+};
+
+export async function getPaymentMethods(userId: number): Promise<PaymentMethod[]> {
+  const result = await getPool().query<PaymentMethod>(
+    "SELECT id, user_id, type, label, details, created_at::text FROM payment_methods WHERE user_id = $1 ORDER BY created_at DESC",
+    [userId],
+  );
+  return result.rows;
+}
+
+export async function addPaymentMethod(
+  userId: number,
+  type: string,
+  label: string,
+  details: string,
+): Promise<PaymentMethod> {
+  const result = await getPool().query<PaymentMethod>(
+    "INSERT INTO payment_methods (user_id, type, label, details) VALUES ($1, $2, $3, $4) RETURNING id, user_id, type, label, details, created_at::text",
+    [userId, type, label, details],
+  );
+  return result.rows[0];
+}
+
+export async function deletePaymentMethod(userId: number, methodId: number): Promise<boolean> {
+  const result = await getPool().query(
+    "DELETE FROM payment_methods WHERE id = $1 AND user_id = $2",
+    [methodId, userId],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+// --- Withdrawals ---
+
+export type Withdrawal = {
+  id: number;
+  user_id: number;
+  method_id: number;
+  method_label: string;
+  amount: string;
+  created_at: string;
+};
+
+export async function createWithdrawal(
+  userId: number,
+  methodId: number,
+  methodLabel: string,
+  amount: number,
+): Promise<{ success: boolean; error?: string }> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+
+    const balResult = await client.query<{ balance: string }>(
+      "SELECT balance::text FROM balance WHERE id = $1 FOR UPDATE",
+      [userId],
+    );
+    if (!balResult.rows[0]) {
+      await client.query("ROLLBACK");
+      return { success: false, error: "Account not found" };
+    }
+    if (Number(balResult.rows[0].balance) < amount) {
+      await client.query("ROLLBACK");
+      return { success: false, error: "Insufficient balance" };
+    }
+
+    await client.query("UPDATE balance SET balance = balance - $1 WHERE id = $2", [amount, userId]);
+    await client.query(
+      "INSERT INTO withdrawals (user_id, method_id, method_label, amount) VALUES ($1, $2, $3, $4)",
+      [userId, methodId, methodLabel, amount],
+    );
+
+    await client.query("COMMIT");
+    return { success: true };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getWithdrawals(userId: number): Promise<Withdrawal[]> {
+  const result = await getPool().query<Withdrawal>(
+    "SELECT id, user_id, method_id, method_label, amount::text, created_at::text FROM withdrawals WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20",
+    [userId],
+  );
+  return result.rows;
+}
+
+// --- Deposits ---
+
+export type Deposit = {
+  id: number;
+  user_id: number;
+  method_label: string;
+  amount: string;
+  crossmint_payment_id: string;
+  created_at: string;
+};
+
+export async function createDeposit(
+  userId: number,
+  amount: number,
+  methodLabel: string,
+  crossmintPaymentId: string,
+): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("UPDATE balance SET balance = balance + $1 WHERE id = $2", [amount, userId]);
+    await client.query(
+      "INSERT INTO deposits (user_id, method_label, amount, crossmint_payment_id) VALUES ($1, $2, $3, $4)",
+      [userId, methodLabel, amount, crossmintPaymentId],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getDeposits(userId: number): Promise<Deposit[]> {
+  const result = await getPool().query<Deposit>(
+    "SELECT id, user_id, method_label, amount::text, crossmint_payment_id, created_at::text FROM deposits WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20",
+    [userId],
+  );
+  return result.rows;
+}

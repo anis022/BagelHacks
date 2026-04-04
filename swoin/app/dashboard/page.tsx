@@ -17,12 +17,27 @@ type Transaction = {
   created_at: string;
 };
 
+type Withdrawal = {
+  id: number;
+  method_label: string;
+  amount: string;
+  created_at: string;
+};
+
+type ActivityItem = {
+  key: string;
+  type: "sent" | "received" | "cashout";
+  label: string;
+  amountStr: string;
+  date: string;
+  icon: string;
+};
+
 export default function DashboardPage() {
   const toast = useToast();
   const router = useRouter();
   const { user, error } = useSession();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [txUserId, setTxUserId] = useState<number | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     if (error === "Not authenticated") {
@@ -32,10 +47,32 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch("/api/transactions")
-      .then((res) => (res.ok ? res.json() : { transactions: [], userId: null }))
-      .then((data: { transactions: Transaction[]; userId: number | null }) => {
-        setTransactions(data.transactions ?? []);
-        setTxUserId(data.userId);
+      .then((res) => (res.ok ? res.json() : { transactions: [], withdrawals: [], userId: null }))
+      .then((data: { transactions: Transaction[]; withdrawals: Withdrawal[]; userId: number | null }) => {
+        const uid = data.userId;
+        const txItems: ActivityItem[] = (data.transactions ?? []).map((t) => {
+          const isSender = t.sender_id === uid;
+          return {
+            key: `tx-${t.id}`,
+            type: isSender ? "sent" : "received",
+            label: isSender ? t.receiver_email : t.sender_email,
+            amountStr: `${isSender ? "-" : "+"}${Number(t.amount).toLocaleString()} USDM`,
+            date: t.created_at,
+            icon: isSender ? "north_east" : "south_west",
+          };
+        });
+        const wItems: ActivityItem[] = (data.withdrawals ?? []).map((w) => ({
+          key: `wd-${w.id}`,
+          type: "cashout",
+          label: w.method_label,
+          amountStr: `-${Number(w.amount).toLocaleString()} USDM`,
+          date: w.created_at,
+          icon: "account_balance",
+        }));
+        const all = [...txItems, ...wItems]
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 5);
+        setActivity(all);
       })
       .catch(() => {});
   }, []);
@@ -148,53 +185,45 @@ export default function DashboardPage() {
         <section className="bg-surface-container-lowest rounded-[2rem] p-6 lg:p-8 ambient-shadow animate-fade-in-up delay-300">
           <div className="flex justify-between items-center mb-8 lg:mb-10">
             <h3 className="text-xl font-headline font-extrabold tracking-tight">Recent Activity</h3>
+            <Link href="/activity" className="text-primary text-sm font-headline font-bold flex items-center gap-1 hover:underline active:scale-95 transition-transform">
+              View All
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
           </div>
 
-          {transactions.length === 0 ? (
+          {activity.length === 0 ? (
             <div className="text-center py-16">
               <span className="material-symbols-outlined text-5xl text-outline-variant mb-4">receipt_long</span>
-              <p className="text-on-surface-variant font-medium">No transactions yet</p>
-              <p className="text-sm text-outline mt-1">Send USDM to another user to see activity here.</p>
+              <p className="text-on-surface-variant font-medium">No activity yet</p>
+              <p className="text-sm text-outline mt-1">Send, receive, or cash out USDM to see activity here.</p>
             </div>
           ) : (
             <>
               {/* Mobile list */}
               <div className="space-y-6 lg:hidden">
-                {transactions.map((t, i) => {
-                  const isSender = t.sender_id === txUserId;
-                  const otherEmail = isSender ? t.receiver_email : t.sender_email;
-                  const amountStr = isSender
-                    ? `-${Number(t.amount).toLocaleString()} USDM`
-                    : `+${Number(t.amount).toLocaleString()} USDM`;
-
-                  return (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between animate-fade-in-up"
-                      style={{ animationDelay: `${(i + 1) * 100}ms` }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center">
-                          <span className="material-symbols-outlined text-primary">
-                            {isSender ? "north_east" : "south_west"}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-bold text-on-surface">{otherEmail}</p>
-                          <p className="text-xs text-on-surface-variant">{formatTxDate(t.created_at)}</p>
-                        </div>
+                {activity.map((item, i) => (
+                  <div
+                    key={item.key}
+                    className="flex items-center justify-between animate-fade-in-up"
+                    style={{ animationDelay: `${(i + 1) * 100}ms` }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${item.type === "received" ? "bg-tertiary/10" : item.type === "cashout" ? "bg-orange-100" : "bg-surface-container-highest"}`}>
+                        <span className={`material-symbols-outlined ${item.type === "received" ? "text-tertiary" : item.type === "cashout" ? "text-orange-600" : "text-primary"}`}>{item.icon}</span>
                       </div>
-                      <div className="text-right">
-                        <p className={`font-bold text-lg ${isSender ? "text-on-surface" : "text-tertiary"}`}>
-                          {amountStr}
-                        </p>
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full inline-block text-on-tertiary-fixed-variant bg-tertiary/10">
-                          Completed
-                        </span>
+                      <div>
+                        <p className="font-bold text-on-surface">{item.label}</p>
+                        <p className="text-xs text-on-surface-variant">{formatTxDate(item.date)}</p>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="text-right">
+                      <p className={`font-bold text-lg ${item.type === "received" ? "text-tertiary" : "text-on-surface"}`}>{item.amountStr}</p>
+                      <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full inline-block ${item.type === "received" ? "bg-tertiary/10 text-on-tertiary-fixed-variant" : item.type === "cashout" ? "bg-orange-100 text-orange-700" : "bg-primary/10 text-primary"}`}>
+                        {item.type === "sent" ? "Sent" : item.type === "received" ? "Received" : "Cash Out"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Desktop table */}
@@ -202,60 +231,44 @@ export default function DashboardPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="text-on-surface-variant/60 font-label text-xs uppercase tracking-[0.15em]">
-                      <th className="pb-6 px-4">User</th>
+                      <th className="pb-6 px-4">Details</th>
                       <th className="pb-6 px-4">Date &amp; Time</th>
                       <th className="pb-6 px-4 text-right">Amount</th>
                       <th className="pb-6 px-4 text-center">Type</th>
-                      <th className="pb-6 px-4 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    {transactions.map((t, i) => {
-                      const isSender = t.sender_id === txUserId;
-                      const otherEmail = isSender ? t.receiver_email : t.sender_email;
-                      const amountStr = isSender
-                        ? `-${Number(t.amount).toLocaleString()} USDM`
-                        : `+${Number(t.amount).toLocaleString()} USDM`;
-
-                      return (
-                        <tr
-                          key={t.id}
-                          className="tonal-shift hover:bg-surface-container-low group cursor-pointer animate-fade-in-up"
-                          style={{ animationDelay: `${(i + 2) * 100}ms` }}
-                          onClick={() => toast(`Transaction #${t.id}`)}
-                        >
-                          <td className="py-5 px-4 rounded-l-2xl">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
-                                <span className="material-symbols-outlined text-primary">
-                                  {isSender ? "north_east" : "south_west"}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-bold text-on-background">{otherEmail}</p>
-                                <p className="text-xs text-on-surface-variant">
-                                  {isSender ? "Sent USDM" : "Received USDM"}
-                                </p>
-                              </div>
+                    {activity.map((item, i) => (
+                      <tr
+                        key={item.key}
+                        className="tonal-shift hover:bg-surface-container-low group cursor-pointer animate-fade-in-up"
+                        style={{ animationDelay: `${(i + 2) * 100}ms` }}
+                        onClick={() => toast(`Activity ${item.key}`)}
+                      >
+                        <td className="py-5 px-4 rounded-l-2xl">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${item.type === "received" ? "bg-tertiary/10" : item.type === "cashout" ? "bg-orange-100" : "bg-surface-container"}`}>
+                              <span className={`material-symbols-outlined ${item.type === "received" ? "text-tertiary" : item.type === "cashout" ? "text-orange-600" : "text-primary"}`}>{item.icon}</span>
                             </div>
-                          </td>
-                          <td className="py-5 px-4 text-on-surface-variant font-medium">{formatTxDate(t.created_at)}</td>
-                          <td className="py-5 px-4 text-right">
-                            <p className={`font-bold ${isSender ? "text-on-background" : "text-tertiary"}`}>{amountStr}</p>
-                          </td>
-                          <td className="py-5 px-4 text-center">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${isSender ? "bg-primary/10 text-primary" : "bg-tertiary/10 text-on-tertiary-fixed-variant"}`}>
-                              {isSender ? "Sent" : "Received"}
-                            </span>
-                          </td>
-                          <td className="py-5 px-4 rounded-r-2xl text-center">
-                            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-tertiary/10 text-on-tertiary-fixed-variant">
-                              Completed
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <div>
+                              <p className="font-bold text-on-background">{item.label}</p>
+                              <p className="text-xs text-on-surface-variant">
+                                {item.type === "sent" ? "Sent USDM" : item.type === "received" ? "Received USDM" : "Withdrawal"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-5 px-4 text-on-surface-variant font-medium">{formatTxDate(item.date)}</td>
+                        <td className="py-5 px-4 text-right">
+                          <p className={`font-bold ${item.type === "received" ? "text-tertiary" : "text-on-background"}`}>{item.amountStr}</p>
+                        </td>
+                        <td className="py-5 px-4 rounded-r-2xl text-center">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${item.type === "received" ? "bg-tertiary/10 text-on-tertiary-fixed-variant" : item.type === "cashout" ? "bg-orange-100 text-orange-700" : "bg-primary/10 text-primary"}`}>
+                            {item.type === "sent" ? "Sent" : item.type === "received" ? "Received" : "Cash Out"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

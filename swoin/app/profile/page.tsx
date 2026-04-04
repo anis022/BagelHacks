@@ -34,7 +34,7 @@ export default function ProfilePage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-secondary">Profile</p>
             <h1 className="text-4xl font-headline font-extrabold tracking-tight">{displayName}</h1>
-            <p className="text-on-surface-variant">Premium Sovereign Account · Verified</p>
+            <p className="text-on-surface-variant">Premium Swoin Account · Verified</p>
           </div>
         </section>
 

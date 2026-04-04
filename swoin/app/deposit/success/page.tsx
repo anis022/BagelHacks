@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { useToast } from "../components/ToastProvider";
+import { useToast } from "../../components/ToastProvider";
 
-function SuccessPageContent() {
+function DepositSuccessContent() {
   const toast = useToast();
   const searchParams = useSearchParams();
   const amount = searchParams.get("amount") || "0.00 USDM";
-  const recipient = searchParams.get("recipient") || "Unknown";
-  const txId = `SV-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+  const method = searchParams.get("method") || "Bank Account";
+  const txId = `DEP-${Date.now().toString(36).toUpperCase().slice(-8)}`;
 
   const copyTxId = async () => {
     try {
@@ -23,8 +23,8 @@ function SuccessPageContent() {
 
   const shareReceipt = async () => {
     const shareData = {
-      title: "Swoin Payment Receipt",
-      text: `Payment of ${amount} to ${recipient} — Transaction ID: ${txId}`,
+      title: "Swoin Deposit Receipt",
+      text: `Deposit of ${amount} from ${method} — Transaction ID: ${txId}`,
     };
     try {
       if (navigator.share) {
@@ -60,15 +60,15 @@ function SuccessPageContent() {
             </div>
           </div>
           <div className="absolute -top-4 -right-4 w-12 h-12 rounded-xl border border-white/40 flex items-center justify-center text-tertiary shadow-sm bg-white/70 backdrop-blur-xl animate-scale-in delay-300">
-            <span className="material-symbols-outlined text-2xl">verified</span>
+            <span className="material-symbols-outlined text-2xl">account_balance</span>
           </div>
         </div>
 
         <h2 className="text-4xl lg:text-5xl font-headline font-extrabold tracking-tight text-on-background mb-4 animate-fade-in-up delay-200">
-          Payment Sent!
+          Deposit Complete!
         </h2>
         <p className="text-on-surface-variant text-lg mb-12 max-w-md mx-auto animate-fade-in-up delay-300">
-          Your USDM transfer has been successfully processed and delivered on-ledger.
+          Your funds have been added to your USDM wallet and are ready to use.
         </p>
 
         {/* Transaction Summary */}
@@ -76,16 +76,16 @@ function SuccessPageContent() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-2">Amount Sent</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-2">Amount Deposited</span>
               <h3 className="text-4xl font-headline font-bold text-on-background">{amount}</h3>
             </div>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary text-2xl">person</span>
+                <span className="material-symbols-outlined text-primary text-2xl">account_balance</span>
               </div>
               <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-1">Recipient</span>
-                <p className="font-headline font-bold text-lg">{recipient}</p>
+                <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 block mb-1">Source</span>
+                <p className="font-headline font-bold text-lg">{method}</p>
               </div>
             </div>
           </div>
@@ -140,17 +140,17 @@ function SuccessPageContent() {
         </div>
 
         <p className="mt-12 text-on-surface-variant/60 text-xs font-medium max-w-xs mx-auto animate-fade-in delay-700">
-          A confirmation has been recorded on-ledger. USDM transfers settle instantly.
+          Your deposit has been recorded. USDM is available in your wallet immediately.
         </p>
       </div>
     </div>
   );
 }
 
-export default function SuccessPage() {
+export default function DepositSuccessPage() {
   return (
     <Suspense fallback={<div className="bg-background min-h-screen" />}>
-      <SuccessPageContent />
+      <DepositSuccessContent />
     </Suspense>
   );
 }

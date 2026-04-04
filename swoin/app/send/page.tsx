@@ -110,7 +110,7 @@ export default function SendPage() {
           </div>
           <div className="hidden lg:block">
             <h2 className="text-4xl font-headline font-extrabold tracking-tight text-on-background mb-2">Send Payment</h2>
-            <p className="text-on-surface-variant">Move USDM across borders instantly with Sovereign Fluidity.</p>
+            <p className="text-on-surface-variant">Move USDM across borders instantly with Swoin.</p>
           </div>
         </header>
 
@@ -153,7 +153,7 @@ export default function SendPage() {
                       </div>
                       <div>
                         <p className="font-bold text-on-background">{r.email}</p>
-                        <p className="text-xs text-on-surface-variant">Sovereign User</p>
+                        <p className="text-xs text-on-surface-variant">Swoin User</p>
                       </div>
                     </button>
                   ))}
@@ -173,7 +173,7 @@ export default function SendPage() {
                     </div>
                     <div>
                       <p className="font-headline font-bold text-primary">{selectedRecipient.email}</p>
-                      <p className="text-xs text-on-surface-variant">Verified Sovereign User</p>
+                      <p className="text-xs text-on-surface-variant">Verified Swoin User</p>
                     </div>
                   </div>
                   <button
@@ -289,7 +289,7 @@ export default function SendPage() {
                 <span className="material-symbols-outlined">verified_user</span>
               </div>
               <div>
-                <p className="text-xs font-bold text-on-background">Sovereign Protected</p>
+                <p className="text-xs font-bold text-on-background">Swoin Protected</p>
                 <p className="text-[10px] text-outline">Encrypted via multi-sig architecture</p>
               </div>
             </div>

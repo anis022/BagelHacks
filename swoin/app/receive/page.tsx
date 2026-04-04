@@ -40,7 +40,7 @@ export default function ReceivePage() {
           </div>
           <div className="hidden lg:block text-center">
             <h2 className="text-4xl font-headline font-extrabold tracking-tight text-on-background mb-2">Receive USDM</h2>
-            <p className="text-on-surface-variant">Share your wallet address to receive payments from other Sovereign users.</p>
+            <p className="text-on-surface-variant">Share your wallet address to receive payments from other Swoin users.</p>
           </div>
         </header>
 

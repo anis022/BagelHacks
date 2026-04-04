@@ -3,8 +3,8 @@ import { ToastProvider } from "./components/ToastProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sovereign — Borderless Payments",
-  description: "Cross-border financial platform with sovereign fluidity.",
+  title: "Swoin — Borderless Payments",
+  description: "Cross-border financial platform powered by Swoin.",
 };
 
 export default function RootLayout({

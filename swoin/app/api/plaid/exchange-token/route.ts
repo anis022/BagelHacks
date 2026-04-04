@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifySessionToken, getSessionCookieName } from "@/lib/session";
+import { addPaymentMethod } from "@/lib/db";
 
 interface PlaidAccount {
   account_id: string;
@@ -105,6 +106,14 @@ export async function POST(request: Request) {
         wireRouting: ach?.wire_routing ?? null,
       };
     });
+
+    // Save each linked account as a payment method in DB
+    for (const acc of accounts) {
+      const type = acc.type === "depository" ? "bank" : acc.type === "credit" ? "card" : acc.type;
+      const label = `${acc.name} ····${acc.mask}`;
+      const details = acc.routing ? `Routing: ${acc.routing}` : acc.subtype;
+      await addPaymentMethod(session.userId, type, label, details);
+    }
 
     return NextResponse.json({ accounts });
   } catch (err) {
