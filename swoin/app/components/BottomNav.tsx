@@ -7,8 +7,8 @@ import { useToast } from "./ToastProvider";
 const navItems = [
   { href: "/dashboard", icon: "home", label: "Home" },
   { href: "/review", icon: "account_balance_wallet", label: "Activity" },
-  { href: null, icon: "credit_card", label: "Cards" },
-  { href: null, icon: "settings", label: "Settings" },
+  { href: "/cards", icon: "credit_card", label: "Cards" },
+  { href: "/settings", icon: "settings", label: "Settings" },
 ];
 
 export default function BottomNav() {
@@ -24,21 +24,6 @@ export default function BottomNav() {
             ? "text-primary bg-surface-container-highest rounded-xl px-4 py-1 animate-pulse-subtle"
             : "text-secondary opacity-60 hover:opacity-100 active:scale-90"
         }`;
-
-        if (!item.href) {
-          return (
-            <button
-              key={item.label}
-              onClick={() => toast(`${item.label} — Coming soon`)}
-              className={classes}
-            >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="font-label text-[10px] uppercase tracking-wider font-semibold mt-1">
-                {item.label}
-              </span>
-            </button>
-          );
-        }
 
         return (
           <Link key={item.label} href={item.href} className={classes}>
