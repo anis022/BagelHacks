@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useToast } from "./ToastProvider";
 
 const navItems = [
   { href: "/dashboard", icon: "dashboard", label: "Home" },
   { href: "/review", icon: "receipt_long", label: "Activity" },
-  { href: null, icon: "credit_card", label: "Cards" },
-  { href: null, icon: "settings", label: "Settings" },
+  { href: "/cards", icon: "credit_card", label: "Cards" },
+  { href: "/settings", icon: "settings", label: "Settings" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const toast = useToast();
 
   return (
     <aside className="h-screen w-64 fixed left-0 top-0 bg-surface-container-low flex-col py-8 px-4 z-50 hidden lg:flex">
@@ -44,19 +42,6 @@ export default function Sidebar() {
               ? "text-primary font-bold border-r-4 border-primary bg-surface-container-highest"
               : "text-secondary font-semibold hover:bg-surface-container-highest hover:translate-x-1"
           }`;
-
-          if (!item.href) {
-            return (
-              <button
-                key={item.label}
-                onClick={() => toast(`${item.label} — Coming soon`)}
-                className={classes + " w-full"}
-              >
-                <span className="material-symbols-outlined">{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            );
-          }
 
           return (
             <Link key={item.label} href={item.href} className={classes}>

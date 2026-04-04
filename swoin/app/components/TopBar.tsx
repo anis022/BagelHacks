@@ -113,9 +113,9 @@ export default function TopBar() {
           </button>
         </div>
         <div className="hidden lg:block h-8 w-px bg-outline-variant/30" />
-        <button
-          onClick={() => toast("Profile — Coming soon")}
-          className="hidden lg:flex items-center gap-3 cursor-pointer group"
+        <Link
+          href="/profile"
+          className="hidden lg:flex items-center gap-3 group"
         >
           <span className="text-sm font-headline font-bold text-secondary group-hover:text-primary transition-colors">
             Profile
@@ -125,7 +125,7 @@ export default function TopBar() {
             className="w-8 h-8 rounded-full object-cover ring-2 ring-transparent group-hover:ring-primary/30 transition-all"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7laqlxI9qFopTzyzkoehzFB4QZPEbcnSs9PIcAFaL0qTYaqBqN1s-yPWGT_cVzalJ_EgmB4je9ozTl3icEegg0q-KYqs3V1mZMk0q2L80p961O9s5DRtwU4O91JSYZTEoIzYMuFP0uZ1sYChDhKjY1Q0axYJZ3-_N2qNIKOX61wF4Nd5-j6ow9hA8MxAqut3g0w4Q84FWzcAS4HTZ1sWM4dxjcz_FT1keyWhvnz1hfUD9JRNOyje0pLpIAjFYwOU6ZfDmKO_oFYU"
           />
-        </button>
+        </Link>
       </div>
     </header>
   );
