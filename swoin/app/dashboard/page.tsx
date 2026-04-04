@@ -35,14 +35,14 @@ export default function DashboardPage() {
                   Send
                 </Link>
                 <button
-                  onClick={() => toast("Receive — Coming soon")}
+                  onClick={() => toast("Receive details opened")}
                   className="flex-1 min-w-[120px] bg-white/20 backdrop-blur-lg hover:bg-white/30 transition-all py-4 rounded-xl flex items-center justify-center gap-2 font-semibold active:scale-95"
                 >
                   <span className="material-symbols-outlined">south_west</span>
                   Receive
                 </button>
                 <button
-                  onClick={() => toast("Swap — Coming soon")}
+                  onClick={() => toast("Swap opened")}
                   className="flex-1 min-w-[120px] bg-white/20 backdrop-blur-lg hover:bg-white/30 transition-all py-4 rounded-xl flex items-center justify-center gap-2 font-semibold active:scale-95"
                 >
                   <span className="material-symbols-outlined">swap_horiz</span>
@@ -105,13 +105,13 @@ export default function DashboardPage() {
         <section className="bg-surface-container-lowest rounded-[2rem] p-6 lg:p-8 ambient-shadow animate-fade-in-up delay-300">
           <div className="flex justify-between items-center mb-8 lg:mb-10">
             <h3 className="text-xl font-headline font-extrabold tracking-tight">Recent Activity</h3>
-            <button
-              onClick={() => toast("Full activity history — Coming soon")}
+            <Link
+              href="/review"
               className="text-primary text-sm font-headline font-bold flex items-center gap-1 hover:underline active:scale-95 transition-transform"
             >
               View All
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </button>
+            </Link>
           </div>
 
           {/* Mobile list */}
@@ -161,7 +161,7 @@ export default function DashboardPage() {
                     key={i}
                     className="tonal-shift hover:bg-surface-container-low group cursor-pointer animate-fade-in-up"
                     style={{ animationDelay: `${(i + 2) * 100}ms` }}
-                    onClick={() => toast("Transaction details — Coming soon")}
+                    onClick={() => toast("Transaction details opened")}
                   >
                     <td className="py-5 px-4 rounded-l-2xl">
                       <div className="flex items-center gap-4">

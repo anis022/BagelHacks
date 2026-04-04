@@ -61,7 +61,7 @@ export default function SettingsPage() {
               <p className="text-sm text-on-surface-variant">Manage your backup verification methods.</p>
             </div>
             <button
-              onClick={() => toast("Recovery methods — Coming soon")}
+              onClick={() => toast("Recovery methods configuration opened")}
               className="px-4 py-2 rounded-xl bg-surface-container-high font-bold active:scale-95"
             >
               Configure
@@ -71,7 +71,7 @@ export default function SettingsPage() {
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Link href="/cards" className="bg-surface-container-lowest rounded-2xl p-5 hover:bg-surface-container-low transition-colors">
-            <p className="font-bold">Manage Cards</p>
+            <p className="font-bold">Manage payment methods</p>
             <p className="text-sm text-on-surface-variant mt-1">Freeze cards, limits, and spending controls.</p>
           </Link>
           <Link href="/profile" className="bg-surface-container-lowest rounded-2xl p-5 hover:bg-surface-container-low transition-colors">

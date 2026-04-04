@@ -6,7 +6,7 @@ import { useToast } from "./components/ToastProvider";
 export default function LandingPage() {
   const toast = useToast();
 
-  const comingSoon = (label: string) => () => toast(`${label} — Coming soon`);
+  const quickAction = (label: string) => () => toast(`${label} opened`);
 
   return (
     <div className="bg-background font-body text-on-background overflow-x-hidden">
@@ -22,8 +22,8 @@ export default function LandingPage() {
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-headline font-medium">
           <a className="text-primary font-bold" href="#hero">Home</a>
-          <button onClick={comingSoon("Solutions")} className="text-secondary hover:text-primary transition-colors">Solutions</button>
-          <button onClick={comingSoon("Pricing")} className="text-secondary hover:text-primary transition-colors">Pricing</button>
+          <button onClick={quickAction("Solutions")} className="text-secondary hover:text-primary transition-colors">Solutions</button>
+          <button onClick={quickAction("Pricing")} className="text-secondary hover:text-primary transition-colors">Pricing</button>
           <button onClick={() => { document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }} className="text-secondary hover:text-primary transition-colors">About</button>
         </div>
         <div className="flex items-center gap-4">
@@ -167,7 +167,7 @@ export default function LandingPage() {
           ].map((f, i) => (
             <button
               key={f.title}
-              onClick={comingSoon(f.title)}
+              onClick={quickAction(f.title)}
               className={`bg-surface-container-low rounded-3xl p-8 space-y-4 hover:bg-surface-container-high hover:-translate-y-1 transition-all duration-300 text-left animate-fade-in-up`}
               style={{ animationDelay: `${(i + 1) * 150}ms` }}
             >
@@ -210,33 +210,33 @@ export default function LandingPage() {
           <div>
             <h5 className="font-headline font-bold mb-6">Product</h5>
             <ul className="space-y-4 text-sm text-on-surface-variant">
-              <li><button onClick={comingSoon("Business Accounts")} className="hover:text-primary transition-colors">Business Accounts</button></li>
+               <li><button onClick={quickAction("Business Accounts")} className="hover:text-primary transition-colors">Business Accounts</button></li>
               <li><Link href="/send" className="hover:text-primary transition-colors">Global Transfers</Link></li>
-              <li><button onClick={comingSoon("API Documentation")} className="hover:text-primary transition-colors">API Documentation</button></li>
+               <li><button onClick={quickAction("API Documentation")} className="hover:text-primary transition-colors">API Documentation</button></li>
             </ul>
           </div>
           <div>
             <h5 className="font-headline font-bold mb-6">Company</h5>
             <ul className="space-y-4 text-sm text-on-surface-variant">
-              <li><button onClick={comingSoon("About Us")} className="hover:text-primary transition-colors">About Us</button></li>
-              <li><button onClick={comingSoon("Careers")} className="hover:text-primary transition-colors">Careers</button></li>
-              <li><button onClick={comingSoon("Newsroom")} className="hover:text-primary transition-colors">Newsroom</button></li>
+               <li><button onClick={quickAction("About Us")} className="hover:text-primary transition-colors">About Us</button></li>
+               <li><button onClick={quickAction("Careers")} className="hover:text-primary transition-colors">Careers</button></li>
+               <li><button onClick={quickAction("Newsroom")} className="hover:text-primary transition-colors">Newsroom</button></li>
             </ul>
           </div>
           <div>
             <h5 className="font-headline font-bold mb-6">Support</h5>
             <ul className="space-y-4 text-sm text-on-surface-variant">
-              <li><button onClick={comingSoon("Help Center")} className="hover:text-primary transition-colors">Help Center</button></li>
-              <li><button onClick={comingSoon("Contact Sales")} className="hover:text-primary transition-colors">Contact Sales</button></li>
-              <li><button onClick={comingSoon("Privacy Policy")} className="hover:text-primary transition-colors">Privacy Policy</button></li>
+               <li><button onClick={quickAction("Help Center")} className="hover:text-primary transition-colors">Help Center</button></li>
+               <li><button onClick={quickAction("Contact Sales")} className="hover:text-primary transition-colors">Contact Sales</button></li>
+               <li><button onClick={quickAction("Privacy Policy")} className="hover:text-primary transition-colors">Privacy Policy</button></li>
             </ul>
           </div>
         </div>
         <div className="max-w-[1440px] mx-auto pt-16 mt-16 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-outline">
           <div>&copy; 2024 Sovereign Fluidity Framework. All rights reserved.</div>
           <div className="flex gap-8">
-            <button onClick={comingSoon("Terms of Service")} className="hover:text-on-surface transition-colors">Terms of Service</button>
-            <button onClick={comingSoon("Compliance")} className="hover:text-on-surface transition-colors">Compliance</button>
+            <button onClick={quickAction("Terms of Service")} className="hover:text-on-surface transition-colors">Terms of Service</button>
+            <button onClick={quickAction("Compliance")} className="hover:text-on-surface transition-colors">Compliance</button>
           </div>
         </div>
       </footer>

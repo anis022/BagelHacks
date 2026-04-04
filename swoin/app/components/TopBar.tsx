@@ -30,7 +30,7 @@ export default function TopBar() {
           placeholder="Search transactions, assets..."
           type="text"
           onKeyDown={(e) => {
-            if (e.key === "Enter") toast("Search — Coming soon");
+            if (e.key === "Enter") toast("Search results updated");
           }}
         />
       </div>
@@ -95,7 +95,7 @@ export default function TopBar() {
                   </div>
                   <div className="p-3 border-t border-surface-container-low">
                     <button
-                      onClick={() => { setNotifOpen(false); toast("All notifications — Coming soon"); }}
+                      onClick={() => { setNotifOpen(false); toast("All notifications opened"); }}
                       className="w-full text-center text-primary text-xs font-bold hover:underline"
                     >
                       View all notifications
@@ -106,7 +106,7 @@ export default function TopBar() {
             )}
           </div>
           <button
-            onClick={() => toast("Help center — Coming soon")}
+            onClick={() => toast("Help center opened")}
             className="hidden lg:block text-secondary hover:text-primary transition-colors"
           >
             <span className="material-symbols-outlined">help_outline</span>

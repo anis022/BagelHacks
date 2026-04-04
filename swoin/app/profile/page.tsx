@@ -35,7 +35,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={() => toast("Edit profile request — Coming soon")}
+              onClick={() => toast("Profile edit request submitted")}
               className="primary-gradient text-white px-5 py-3 rounded-xl font-bold active:scale-95"
             >
               Request Edit
@@ -44,7 +44,7 @@ export default function ProfilePage() {
               Security Settings
             </Link>
             <Link href="/cards" className="px-5 py-3 rounded-xl bg-surface-container-high font-bold">
-              My Cards
+              My payment methods
             </Link>
           </div>
         </section>

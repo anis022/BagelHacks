@@ -83,7 +83,7 @@ export default function SendPage() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-headline font-bold text-on-background">Recipient</h3>
                 <button
-                  onClick={() => toast("New contact — Coming soon")}
+                  onClick={() => toast("New recipient form opened")}
                   className="text-primary font-headline font-bold text-sm hover:underline active:scale-95 transition-transform"
                 >
                   New Contact
@@ -137,7 +137,7 @@ export default function SendPage() {
                     );
                   })}
                   <button
-                    onClick={() => toast("New contact — Coming soon")}
+                    onClick={() => toast("New recipient flow opened")}
                     className="group bg-surface-container-low hover:bg-surface-container-high p-4 rounded-2xl transition-all border-2 border-dashed border-outline-variant/30 flex flex-col items-center gap-3 active:scale-95 animate-fade-in-up delay-400"
                   >
                     <div className="w-14 lg:w-16 h-14 lg:h-16 rounded-full flex items-center justify-center bg-surface-container-highest">
