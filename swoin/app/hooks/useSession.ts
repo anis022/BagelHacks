@@ -10,6 +10,7 @@ export type SessionUser = {
 
 export function useSession() {
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -20,15 +21,22 @@ export function useSession() {
         return data.user ?? null;
       })
       .then((nextUser) => {
-        if (active) setUser(nextUser);
+        if (active) {
+          setUser(nextUser);
+          setError(null);
+        }
       })
-      .catch(() => {
-        if (active) setUser(null);
+      .catch((err: unknown) => {
+        if (active) {
+          setUser(null);
+          setError("Unable to verify session");
+        }
+        console.error("Session fetch failed", err);
       });
     return () => {
       active = false;
     };
   }, []);
 
-  return user;
+  return { user, error };
 }
