@@ -13,7 +13,12 @@ export async function GET() {
     }
 
     const methods = await getPaymentMethods(session.userId);
-    return NextResponse.json({ methods });
+    // Strip sensitive Plaid credentials before sending to the client
+    const safeMethods = methods.map(({ plaid_access_token, plaid_account_id, ...rest }) => ({
+      ...rest,
+      hasLinkedBank: !!(plaid_access_token && plaid_account_id),
+    }));
+    return NextResponse.json({ methods: safeMethods });
   } catch {
     return NextResponse.json({ error: "Failed to fetch payment methods" }, { status: 500 });
   }

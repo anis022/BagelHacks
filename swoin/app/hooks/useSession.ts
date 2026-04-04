@@ -11,6 +11,7 @@ export type SessionUser = {
 export function useSession() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fetchCount, setFetchCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -41,7 +42,9 @@ export function useSession() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [fetchCount]);
 
-  return { user, error };
+  const refetch = () => setFetchCount((c) => c + 1);
+
+  return { user, error, refetch };
 }

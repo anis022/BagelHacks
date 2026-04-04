@@ -15,8 +15,10 @@ function CashoutSuccessContent() {
   const toast = useToast();
   const searchParams = useSearchParams();
   const amount = searchParams.get("amount") || "0.00 USDM";
+  const receive = searchParams.get("receive") || "";
   const methodLabel = searchParams.get("methodLabel") || "Payment Method";
   const methodType = searchParams.get("methodType") || "bank";
+  const via = searchParams.get("via") || "Crossmint Direct";
   const txId = `SW-${Date.now().toString(36).toUpperCase().slice(-8)}`;
 
   const copyTxId = async () => {
@@ -96,6 +98,34 @@ function CashoutSuccessContent() {
               </div>
             </div>
           </div>
+
+          {(receive || via !== "Crossmint Direct") && (
+            <>
+              <div className="h-px bg-outline-variant/20 my-6" />
+              <div className="relative z-10 flex flex-col md:flex-row gap-6">
+                {receive && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-tertiary-container/30 flex items-center justify-center text-tertiary">
+                      <span className="material-symbols-outlined">paid</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 block">You Receive</span>
+                      <p className="text-tertiary font-bold">{receive}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined">route</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 block">Via</span>
+                    <p className="text-on-background font-bold text-sm">{via}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="h-px bg-outline-variant/20 my-8" />
 

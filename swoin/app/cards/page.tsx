@@ -172,12 +172,12 @@ export default function CardsPage() {
           </section>
         )}
 
-        {/* Cash out CTA */}
+        {/* Deposit + Cash out CTAs */}
         <section className="bg-surface-container-lowest rounded-[2rem] p-6 lg:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 animate-fade-in-up delay-300">
-          <p className="text-on-surface-variant">Need funds in your bank? Cash out from your USDM balance at any time.</p>
+          <p className="text-on-surface-variant">Add funds or cash out from your USDM balance at any time.</p>
           <div className="flex flex-wrap gap-3">
-            <Link href="/cashout" className="px-5 py-3 rounded-xl primary-gradient text-white font-bold active:scale-95">Cash Out</Link>
-            <Link href="/settings" className="px-4 py-2 rounded-xl bg-surface-container-high font-bold">Open Settings</Link>
+            <Link href="/deposit" className="px-5 py-3 rounded-xl primary-gradient text-white font-bold active:scale-95">Deposit</Link>
+            <Link href="/cashout" className="px-5 py-3 rounded-xl bg-surface-container-high font-bold active:scale-95">Cash Out</Link>
           </div>
         </section>
       </div>

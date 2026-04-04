@@ -8,6 +8,8 @@ import AppShell from "../components/AppShell";
 import { useToast } from "../components/ToastProvider";
 import { useSession } from "../hooks/useSession";
 
+type PaymentMethodInfo = { id: number; type: string; label: string };
+
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"];
 
 export default function DepositPage() {
@@ -15,8 +17,13 @@ export default function DepositPage() {
   const router = useRouter();
   const { user, error: sessionError } = useSession();
   const [amount, setAmount] = useState("");
-  const [linkToken, setLinkToken] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [methods, setMethods] = useState<PaymentMethodInfo[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState<number | null>(null);
+  const [loadingMethods, setLoadingMethods] = useState(true);
+
+  // Plaid Link for users with no payment method yet
+  const [linkToken, setLinkToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (sessionError === "Not authenticated") {
@@ -24,15 +31,30 @@ export default function DepositPage() {
     }
   }, [sessionError, router]);
 
-  // Fetch Plaid link token on mount
+  // Load payment methods
   useEffect(() => {
-    fetch("/api/plaid/link-token", { method: "POST" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { link_token?: string } | null) => {
-        if (data?.link_token) setLinkToken(data.link_token);
+    fetch("/api/payment-methods")
+      .then((res) => (res.ok ? res.json() : { methods: [] }))
+      .then((data: { methods: PaymentMethodInfo[] }) => {
+        const m = data.methods ?? [];
+        setMethods(m);
+        if (m.length > 0) setSelectedMethodId(m[0].id);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingMethods(false));
   }, []);
+
+  // Fetch Plaid link token only if no methods
+  useEffect(() => {
+    if (!loadingMethods && methods.length === 0) {
+      fetch("/api/plaid/link-token", { method: "POST" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { link_token?: string } | null) => {
+          if (data?.link_token) setLinkToken(data.link_token);
+        })
+        .catch(() => {});
+    }
+  }, [loadingMethods, methods.length]);
 
   const parsedAmount = parseFloat(amount);
   const normalizedAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
@@ -46,6 +68,36 @@ export default function DepositPage() {
     return balanceNum.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, [balanceNum]);
 
+  // Direct deposit using existing payment method (hardcoded in DB)
+  const handleDirectDeposit = async () => {
+    if (normalizedAmount <= 0 || !selectedMethodId) return;
+    setProcessing(true);
+    try {
+      const res = await fetch("/api/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ methodId: selectedMethodId, amount: normalizedAmount }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        toast(data.error ?? "Deposit failed");
+        setProcessing(false);
+        return;
+      }
+      const method = methods.find((m) => m.id === selectedMethodId);
+      const label = method?.label ?? "Bank Account";
+      const params = new URLSearchParams({
+        amount: `${normalizedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} USDM`,
+        method: label,
+      });
+      router.push(`/deposit/success?${params.toString()}`);
+    } catch {
+      toast("Network error, please try again");
+      setProcessing(false);
+    }
+  };
+
+  // Plaid flow for first-time users (connect bank + deposit in one go)
   const onPlaidSuccess = useCallback(
     async (publicToken: string, metadata: { accounts?: Array<{ id: string; name: string; mask: string }> }) => {
       if (normalizedAmount <= 0) {
@@ -94,6 +146,9 @@ export default function DepositPage() {
     onExit: () => {},
   });
 
+  const hasMethod = methods.length > 0;
+  const canDeposit = normalizedAmount > 0 && !processing && (hasMethod ? !!selectedMethodId : ready && !!linkToken);
+
   const handleKey = (key: string) => {
     if (key === "backspace") {
       setAmount((prev) => prev.slice(0, -1));
@@ -106,8 +161,6 @@ export default function DepositPage() {
       setAmount((prev) => prev + key);
     }
   };
-
-  const canDeposit = normalizedAmount > 0 && ready && linkToken && !processing;
 
   return (
     <AppShell>
@@ -127,6 +180,39 @@ export default function DepositPage() {
 
         <div className="flex flex-col items-center gap-8">
           <div className="bg-surface-container-lowest rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-on-background/5 border border-outline-variant/10 w-full animate-fade-in-up delay-100">
+            {/* Payment method selector (if user has linked methods) */}
+            {hasMethod && (
+              <div className="mb-6">
+                <p className="text-xs font-bold text-outline uppercase tracking-widest mb-3">Deposit from</p>
+                <div className="space-y-2">
+                  {methods.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedMethodId(m.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left active:scale-[0.98] ${
+                        selectedMethodId === m.id
+                          ? "bg-primary/10 ring-2 ring-primary"
+                          : "bg-surface-container-low hover:bg-surface-container-high"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedMethodId === m.id ? "bg-primary/20" : "bg-surface-container-highest"}`}>
+                        <span className={`material-symbols-outlined ${selectedMethodId === m.id ? "text-primary" : "text-secondary"}`}>
+                          {m.type === "bank" ? "account_balance" : m.type === "card" ? "credit_card" : "payments"}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-bold text-sm ${selectedMethodId === m.id ? "text-primary" : "text-on-background"}`}>{m.label}</p>
+                        <p className="text-xs text-on-surface-variant capitalize">{m.type}</p>
+                      </div>
+                      {selectedMethodId === m.id && (
+                        <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="text-center mb-8">
               <p className="text-xs font-bold text-outline uppercase tracking-widest mb-4">Amount to Deposit</p>
               <div className="flex items-center justify-center gap-3">
@@ -167,18 +253,23 @@ export default function DepositPage() {
             {/* CTA */}
             {canDeposit ? (
               <button
-                onClick={() => open()}
+                onClick={hasMethod ? handleDirectDeposit : () => open()}
                 disabled={processing}
                 className="w-full primary-gradient text-white py-5 rounded-2xl font-headline font-extrabold text-lg shadow-lg shadow-primary/30 transition-all active:scale-[0.98] btn-press disabled:opacity-60"
               >
-                {processing ? "Processing Deposit..." : "Connect Bank & Deposit"}
+                {processing
+                  ? "Processing Deposit..."
+                  : hasMethod
+                    ? `Deposit $${normalizedAmount.toFixed(2)}`
+                    : "Connect Bank & Deposit"
+                }
               </button>
             ) : (
               <button
                 disabled
                 className="w-full bg-outline-variant/30 text-outline py-5 rounded-2xl font-headline font-extrabold text-lg cursor-not-allowed"
               >
-                {!linkToken ? "Loading..." : normalizedAmount <= 0 ? "Enter an amount" : "Processing..."}
+                {loadingMethods ? "Loading..." : normalizedAmount <= 0 ? "Enter an amount" : !hasMethod && !linkToken ? "Loading..." : "Processing..."}
               </button>
             )}
           </div>
@@ -192,7 +283,9 @@ export default function DepositPage() {
             </div>
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-sm">2</div>
-              <p className="text-sm text-on-surface-variant">Connect your bank account securely via Plaid</p>
+              <p className="text-sm text-on-surface-variant">
+                {hasMethod ? "Select your linked bank account and confirm" : "Connect your bank account securely via Plaid"}
+              </p>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-sm">3</div>

@@ -2,14 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-declare global {
-  interface Window {
-    Plaid: {
-      create: (config: PlaidLinkOptions) => PlaidLinkHandler;
-    };
-  }
-}
-
 interface PlaidLinkOptions {
   token: string;
   onSuccess: (publicToken: string, metadata: unknown) => void;
@@ -25,6 +17,14 @@ interface PlaidLinkHandler {
 interface PlaidExitError {
   display_message: string | null;
   error_code: string | null;
+}
+
+interface PlaidFactory {
+  create: (config: PlaidLinkOptions) => PlaidLinkHandler;
+}
+
+function getPlaid(): PlaidFactory | undefined {
+  return (window as unknown as { Plaid?: PlaidFactory }).Plaid;
 }
 
 type Status = "idle" | "script-loading" | "fetching-token" | "ready" | "connecting" | "saving" | "success" | "error";
@@ -76,12 +76,13 @@ export default function PlaidLink({ onLinked }: { onLinked?: () => void }) {
 
   const openLink = useCallback(() => {
     const token = linkTokenRef.current;
-    if (!token || !window.Plaid) return;
+    const plaid = getPlaid();
+    if (!token || !plaid) return;
 
     handlerRef.current?.destroy();
     setStatus("connecting");
 
-    const handler = window.Plaid.create({
+    const handler = plaid.create({
       token,
       onSuccess: async (publicToken) => {
         setStatus("saving");

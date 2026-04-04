@@ -107,12 +107,12 @@ export async function POST(request: Request) {
       };
     });
 
-    // Save each linked account as a payment method in DB
+    // Save each linked account as a payment method in DB (with Plaid credentials for future deposits)
     for (const acc of accounts) {
       const type = acc.type === "depository" ? "bank" : acc.type === "credit" ? "card" : acc.type;
       const label = `${acc.name} ····${acc.mask}`;
       const details = acc.routing ? `Routing: ${acc.routing}` : acc.subtype;
-      await addPaymentMethod(session.userId, type, label, details);
+      await addPaymentMethod(session.userId, type, label, details, access_token, acc.accountId);
     }
 
     return NextResponse.json({ accounts });

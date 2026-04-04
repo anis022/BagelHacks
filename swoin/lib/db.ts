@@ -19,6 +19,43 @@ function getPool() {
   return pool;
 }
 
+// --- Global Wallet (Swoin custodial USDM pool) ---
+
+const GLOBAL_WALLET_ID = "swoin-global-usdm";
+
+let _globalWalletReady = false;
+async function ensureGlobalWalletTable(): Promise<void> {
+  if (_globalWalletReady) return;
+  await getPool().query(
+    `CREATE TABLE IF NOT EXISTS global_wallet (
+       id TEXT PRIMARY KEY,
+       usdm_balance NUMERIC NOT NULL DEFAULT 0
+     )`,
+  );
+  await getPool().query(
+    `INSERT INTO global_wallet (id, usdm_balance)
+     VALUES ($1, 0)
+     ON CONFLICT (id) DO NOTHING`,
+    [GLOBAL_WALLET_ID],
+  );
+  _globalWalletReady = true;
+}
+
+export async function ensureGlobalWallet(): Promise<void> {
+  await ensureGlobalWalletTable();
+}
+
+export async function getGlobalWalletBalance(): Promise<number> {
+  await ensureGlobalWalletTable();
+  const result = await getPool().query<{ usdm_balance: string }>(
+    "SELECT usdm_balance::text FROM global_wallet WHERE id = $1",
+    [GLOBAL_WALLET_ID],
+  );
+  return Number(result.rows[0]?.usdm_balance ?? 0);
+}
+
+// --- Auth ---
+
 export type AuthUser = {
   id: number;
   email: string;
@@ -171,15 +208,38 @@ export type PaymentMethod = {
   type: string;
   label: string;
   details: string;
+  plaid_access_token: string | null;
+  plaid_account_id: string | null;
   created_at: string;
 };
 
+async function ensurePaymentMethodColumns(): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    `DO $$ BEGIN
+       ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS plaid_access_token TEXT;
+       ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS plaid_account_id TEXT;
+     EXCEPTION WHEN OTHERS THEN NULL;
+     END $$`,
+  );
+}
+
 export async function getPaymentMethods(userId: number): Promise<PaymentMethod[]> {
+  await ensurePaymentMethodColumns();
   const result = await getPool().query<PaymentMethod>(
-    "SELECT id, user_id, type, label, details, created_at::text FROM payment_methods WHERE user_id = $1 ORDER BY created_at DESC",
+    "SELECT id, user_id, type, label, details, plaid_access_token, plaid_account_id, created_at::text FROM payment_methods WHERE user_id = $1 ORDER BY created_at DESC",
     [userId],
   );
   return result.rows;
+}
+
+export async function getPaymentMethodById(userId: number, methodId: number): Promise<PaymentMethod | null> {
+  await ensurePaymentMethodColumns();
+  const result = await getPool().query<PaymentMethod>(
+    "SELECT id, user_id, type, label, details, plaid_access_token, plaid_account_id, created_at::text FROM payment_methods WHERE id = $1 AND user_id = $2 LIMIT 1",
+    [methodId, userId],
+  );
+  return result.rows[0] ?? null;
 }
 
 export async function addPaymentMethod(
@@ -187,10 +247,15 @@ export async function addPaymentMethod(
   type: string,
   label: string,
   details: string,
+  plaidAccessToken?: string,
+  plaidAccountId?: string,
 ): Promise<PaymentMethod> {
+  await ensurePaymentMethodColumns();
   const result = await getPool().query<PaymentMethod>(
-    "INSERT INTO payment_methods (user_id, type, label, details) VALUES ($1, $2, $3, $4) RETURNING id, user_id, type, label, details, created_at::text",
-    [userId, type, label, details],
+    `INSERT INTO payment_methods (user_id, type, label, details, plaid_access_token, plaid_account_id)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, user_id, type, label, details, plaid_access_token, plaid_account_id, created_at::text`,
+    [userId, type, label, details, plaidAccessToken ?? null, plaidAccountId ?? null],
   );
   return result.rows[0];
 }
@@ -220,6 +285,7 @@ export async function createWithdrawal(
   methodLabel: string,
   amount: number,
 ): Promise<{ success: boolean; error?: string }> {
+  await ensureGlobalWalletTable();
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");
@@ -238,6 +304,13 @@ export async function createWithdrawal(
     }
 
     await client.query("UPDATE balance SET balance = balance - $1 WHERE id = $2", [amount, userId]);
+    // Debit the global Swoin USDM wallet (USDM leaves the pool, fiat goes out)
+    await client.query(
+      `INSERT INTO global_wallet (id, usdm_balance)
+       VALUES ($1, -$2)
+       ON CONFLICT (id) DO UPDATE SET usdm_balance = global_wallet.usdm_balance - $2`,
+      [GLOBAL_WALLET_ID, amount],
+    );
     await client.query(
       "INSERT INTO withdrawals (user_id, method_id, method_label, amount) VALUES ($1, $2, $3, $4)",
       [userId, methodId, methodLabel, amount],
@@ -278,10 +351,19 @@ export async function createDeposit(
   methodLabel: string,
   crossmintPaymentId: string,
 ): Promise<void> {
+  await ensureGlobalWalletTable();
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");
+    // Credit the user's personal balance
     await client.query("UPDATE balance SET balance = balance + $1 WHERE id = $2", [amount, userId]);
+    // Credit the global Swoin USDM wallet (fiat came in, USDM pool grows)
+    await client.query(
+      `INSERT INTO global_wallet (id, usdm_balance)
+       VALUES ($1, $2)
+       ON CONFLICT (id) DO UPDATE SET usdm_balance = global_wallet.usdm_balance + $2`,
+      [GLOBAL_WALLET_ID, amount],
+    );
     await client.query(
       "INSERT INTO deposits (user_id, method_label, amount, crossmint_payment_id) VALUES ($1, $2, $3, $4)",
       [userId, methodLabel, amount, crossmintPaymentId],
