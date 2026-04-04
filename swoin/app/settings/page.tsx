@@ -71,7 +71,7 @@ export default function SettingsPage() {
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Link href="/cards" className="bg-surface-container-lowest rounded-2xl p-5 hover:bg-surface-container-low transition-colors">
-            <p className="font-bold">Manage Payment methods</p>
+            <p className="font-bold">Manage payment methods</p>
             <p className="text-sm text-on-surface-variant mt-1">Freeze cards, limits, and spending controls.</p>
           </Link>
           <Link href="/profile" className="bg-surface-container-lowest rounded-2xl p-5 hover:bg-surface-container-low transition-colors">
