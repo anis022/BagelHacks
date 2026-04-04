@@ -28,7 +28,10 @@ function getPool() {
     user,
     database,
     password,
-    ssl: sslMode === "disable" ? false : { rejectUnauthorized: sslMode === "verify-full" },
+    ssl:
+      sslMode === "disable"
+        ? false
+        : { rejectUnauthorized: sslMode === "verify-full" },
     max: 10,
     idleTimeoutMillis: 30_000,
   });
@@ -51,7 +54,10 @@ export async function getUserByEmail(email: string): Promise<AuthUser | null> {
   return result.rows[0] ?? null;
 }
 
-export async function createUser(email: string, passwordHash: string): Promise<{ id: number; email: string }> {
+export async function createUser(
+  email: string,
+  passwordHash: string,
+): Promise<{ id: number; email: string }> {
   const client = await getPool().connect();
 
   try {
@@ -63,7 +69,10 @@ export async function createUser(email: string, passwordHash: string): Promise<{
     );
 
     const user = loginResult.rows[0];
-    await client.query("INSERT INTO balance (id, balance) VALUES ($1, $2)", [user.id, 0]);
+    await client.query("INSERT INTO balance (id, balance) VALUES ($1, $2)", [
+      user.id,
+      0,
+    ]);
 
     await client.query("COMMIT");
     return user;
@@ -75,8 +84,14 @@ export async function createUser(email: string, passwordHash: string): Promise<{
   }
 }
 
-export async function getUserSessionData(userId: number): Promise<{ id: number; email: string; balance: string } | null> {
-  const result = await getPool().query<{ id: number; email: string; balance: string }>(
+export async function getUserSessionData(
+  userId: number,
+): Promise<{ id: number; email: string; balance: string } | null> {
+  const result = await getPool().query<{
+    id: number;
+    email: string;
+    balance: string;
+  }>(
     `SELECT l.id, l.email, COALESCE(b.balance, 0)::text AS balance
      FROM login l
      LEFT JOIN balance b ON b.id = l.id
@@ -86,4 +101,25 @@ export async function getUserSessionData(userId: number): Promise<{ id: number; 
   );
 
   return result.rows[0] ?? null;
+}
+
+// Apply a delta to a user's balance. Returns the new balance as text.
+// Uses INSERT ... ON CONFLICT to create the balance row if it doesn't exist
+// and atomically updates the existing value otherwise.
+export async function updateBalance(
+  userId: number,
+  delta: number,
+): Promise<string> {
+  const result = await getPool().query<{ balance: string }>(
+    `INSERT INTO balance (id, balance) VALUES ($1, $2)
+     ON CONFLICT (id) DO UPDATE SET balance = balance + EXCLUDED.balance
+     RETURNING balance`,
+    [userId, delta],
+  );
+
+  if (!result.rows[0]) {
+    throw new Error("Failed to update balance");
+  }
+
+  return result.rows[0].balance;
 }
