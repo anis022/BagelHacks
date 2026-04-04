@@ -115,7 +115,7 @@ export default function TopBar() {
         <div className="hidden lg:block h-8 w-px bg-outline-variant/30" />
         <Link
           href="/profile"
-          className="hidden lg:flex items-center gap-3 cursor-pointer group"
+          className="hidden lg:flex items-center gap-3 group"
         >
           <span className="text-sm font-headline font-bold text-secondary group-hover:text-primary transition-colors">
             Profile
