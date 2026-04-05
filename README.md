@@ -1,267 +1,126 @@
-# Swoin — Borderless Payments
+# Swoin — Borderless Payments (Problem → Technical Solution)
 
-> **Borderless Payments. Zero Hassle.**
+Short summary
 
-Swoin is a full-stack cross-border payments platform that lets users send, receive, deposit, and withdraw **USDM** (a stable digital currency) anywhere in the world. It is built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and PostgreSQL.
+Swoin is a prototype custodial cross-border payments platform that moves USD-equivalent value (USDM) between users and traditional banks. This README focuses on the problem we solve, the technical design choices made to solve it, and the concrete implementation details that matter for correctness, auditability, and operations.
 
----
+The problem
 
-## Table of Contents
+Cross-border and interbank value movement suffers from three main issues:
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Database Schema](#database-schema)
-- [API Routes](#api-routes)
-- [Authentication & Security](#authentication--security)
-- [Scripts](#scripts)
+- Latency & uncertainty: settlement across rails (ACH, SWIFT) can take days and fees are unpredictable.
+- Reconciliation complexity: fragmented rails and asynchronous callbacks make accounting and audits difficult.
+- Race conditions and correctness: concurrent operations must not produce inconsistent balances or allow double-spend.
 
----
+Requirements we targeted
 
-## Overview
+- Deterministic accounting (audit trail for every movement).
+- Atomic user-level transfers with strong consistency.
+- Predictable operational flows for deposits/withdrawals (idempotent handling of provider retries).
+- Low onboarding friction (simple bank linking in dev via Plaid placeholder).
+- Reasonable performance for MVP (Postgres-level throughput) with clear paths for scaling.
 
-Swoin operates as a **custodial payment platform** where every user holds a USDM balance managed by a shared global ledger. Key platform metrics:
+Technical solution (high level)
 
-- 180+ countries supported
-- Sub-30-second settlement (T+0)
-- Bank account linking via **Plaid**
-- On-ramp processing via **Crossmint**
+We implemented a custodial global-wallet model with PostgreSQL as the single source of truth. Every change to money is represented by a persistent transaction row and an accompanying balance mutation performed inside a single ACID database transaction.
 
----
+Why this approach
 
-## Features
+- Simplicity & auditability: a single authoritative ledger (transactions table + user balances) makes reconciliation straightforward.
+- Correctness: row-level locking (SELECT ... FOR UPDATE) and Postgres transactions prevent concurrent double-spend.
+- Operational visibility: an explicit `global_wallet` row captures platform-level custody for reconciliation against external settlement reports.
 
-| Feature                  | Description                                                    |
-| ------------------------ | -------------------------------------------------------------- |
-| **P2P Transfers**        | Send USDM to any user by email with an optional note           |
-| **Deposit / Onramp**     | Add funds through a connected bank account (Plaid + Crossmint) |
-| **Withdrawal / Cashout** | Withdraw USDM back to a linked bank account                    |
-| **Activity History**     | Paginated view of all transactions, deposits, and withdrawals  |
-| **Payment Methods**      | Add and remove bank accounts via Plaid Link                    |
-| **Dashboard**            | Real-time balance and quick-action cards                       |
-| **Profile & Settings**   | Account info and preferences                                   |
+Core design details
 
----
+- Ledger model: users have numeric balance columns and there is a transactions table storing immutable records for deposits, withdrawals, transfers, fees, and settlement events.
+- Atomic updates: business flows (transfer, deposit, cashout) execute inside a Postgres transaction. The pattern is:
+  1) INSERT a transaction record (idempotency key when relevant)
+  2) SELECT the involved balance rows FOR UPDATE
+  3) Validate balances and business rules
+  4) UPDATE balance rows
+  5) COMMIT
 
-## Tech Stack
+- Idempotency: external callbacks (webhooks) and multi-step flows use idempotency keys stored alongside transaction rows so retries do not create duplicate effects.
+- Global wallet: a single `global_wallet` row represents the platform pool of USDM. Deposits increment it; cashouts decrement it. This makes platform liquidity explicit and easy to reconcile.
 
-### Frontend
+API surface (implementation-level)
 
-- [Next.js 16](https://nextjs.org/) (App Router)
-- [React 19](https://react.dev/)
-- [TypeScript 5](https://www.typescriptlang.org/)
-- [Tailwind CSS 4](https://tailwindcss.com/)
-- [react-plaid-link](https://github.com/plaid/react-plaid-link) — bank account linking
+- POST /api/auth/signup        — create user and seed starting balance
+- POST /api/auth/signin        — authenticate and create session
+- GET  /api/auth/session       — return current session user
+- POST /api/transfer           — P2P transfer (performs atomic ledger update)
+- POST /api/deposit            — record deposit and credit user (idempotent)
+- POST /api/cashout            — record withdrawal and debit user (idempotent)
+- GET  /api/transactions       — fetch transaction history
+- POST /api/plaid/exchange-token — exchange Plaid public token for access (dev placeholder)
 
-### Backend
+Concrete guarantees and failure modes
 
-- Next.js API Routes (Node.js)
-- [PostgreSQL](https://www.postgresql.org/) via [`pg`](https://node-postgres.com/)
-- [bcryptjs](https://github.com/dcodeIO/bcrypt.js) — password hashing (12 rounds)
-- HMAC-SHA256 session tokens stored in HttpOnly cookies
+- Correctness: if the database transaction commits, ledger rows and balances are consistent. If it aborts, no partial state is left.
+- Idempotency: repeated webhook deliveries or client retries with the same idempotency key are safe and ignored after the first successful application.
+- Partial external failures: external settlement (bank push/pull) is modeled separately from the ledger; reconciliation is required to match on-chain ledger state with external settlement reports.
 
----
+Operational & scaling notes
 
-## Project Structure
+- Postgres is sufficient for MVP throughput and provides the strong consistency we need. For higher scale consider:
+  - Logical sharding (by customer cohort or geography)
+  - Sequenced batching service or append-only ledger service for very high write rates
+  - Read replicas and caching for read-heavy endpoints
+- Monitoring: alert on negative balances, gaps between `global_wallet` and sum(user balances), and idempotency/in-flight failures.
+- Backups & audit: enable point-in-time recovery and immutable backups of transaction history for compliance.
 
-```
-BagelHacks/
-└── swoin/                   # Main application
-    ├── app/
-    │   ├── api/             # API route handlers
-    │   │   ├── auth/        # signin, signup, session, signout
-    │   │   ├── transfer/    # P2P transfers
-    │   │   ├── transactions/# Transaction history
-    │   │   ├── deposit/     # Deposit / onramp
-    │   │   ├── cashout/     # Withdrawal
-    │   │   ├── payment-methods/
-    │   │   ├── plaid/       # Plaid link & token exchange
-    │   │   ├── users/       # User search
-    │   │   └── global-wallet/
-    │   ├── components/      # Shared UI components
-    │   │   ├── AppShell.tsx
-    │   │   ├── Sidebar.tsx
-    │   │   ├── TopBar.tsx
-    │   │   ├── BottomNav.tsx
-    │   │   └── ToastProvider.tsx
-    │   ├── dashboard/
-    │   ├── send/
-    │   ├── review/
-    │   ├── cashout/
-    │   ├── deposit/
-    │   ├── activity/
-    │   ├── cards/
-    │   ├── profile/
-    │   ├── settings/
-    │   ├── login/
-    │   └── page.tsx         # Landing page
-    ├── lib/
-    │   ├── db.ts            # PostgreSQL connection & queries
-    │   ├── auth.ts          # Password hashing & verification
-    │   └── session.ts       # HMAC session token management
-    ├── proxy.ts             # Next.js middleware (auth routing)
-    ├── package.json
-    ├── tsconfig.json
-    └── next.config.ts
-```
+Security & compliance
 
----
+- Passwords: bcrypt hashing (configurable cost factor).
+- Sessions: HMAC-signed tokens in Secure, HttpOnly cookies — rotate secrets in production and consider HSM for signing.
+- KYC/AML: hooks exist where a production deployment MUST integrate a KYC provider and transaction monitoring before enabling fiat rails.
 
-## Getting Started
+Developer quick start
 
-### Prerequisites
+Prerequisites:
 
 - Node.js 18+
 - PostgreSQL 14+
 
-### Installation
+Quick start:
 
-```bash
-# 1. Navigate to the app directory
-cd swoin
+1. Change into the app directory: `cd swoin`
+2. Install dependencies: `npm install`
+3. Create `.env.local` with required variables (see below)
+4. Start dev server: `npm run dev`
 
-# 2. Install dependencies
-npm install
+Minimum environment variables:
 
-# 3. Copy and fill in environment variables
-cp .env.example .env.local   # create this file manually if it doesn't exist
+- PGHOST, PGPORT, PGUSER, PGDATABASE, PGPASSWORD
+- SESSION_SECRET
+- NODE_ENV
 
-# 4. Start the development server
-npm run dev
+Testing and verification
+
+- Tests should exercise concurrent transfer scenarios to validate SELECT ... FOR UPDATE locking and atomic updates.
+- Run integration flows covering deposits -> ledger credit -> external settlement reconciliation.
+
+Next steps (product & engineering)
+
+1. Integrate a production-grade KYC/AML provider and enable transaction monitoring.
+2. Harden production deployment: secrets management, rotated keys, stricter cookie policies, HSM-backed signing.
+3. Implement end-to-end reconciliation between `global_wallet` and external settlement reports.
+
+Project layout (short)
+
+- `app/`     — Next.js frontend and API route handlers
+- `lib/`     — DB connection and utilities (auth, session)
+- `proxy.ts` — middleware for route-level auth
+
+Scripts (from inside `swoin/`):
+
 ```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## Environment Variables
-
-Create a `.env.local` file inside `swoin/` with the following variables:
-
-```env
-# PostgreSQL connection
-PGHOST=localhost
-PGPORT=5432
-PGUSER=your_db_user
-PGDATABASE=swoin
-PGPASSWORD=your_db_password
-
-# Session signing secret (use a long random string)
-SESSION_SECRET=your_super_secret_key
-
-# Node environment
-NODE_ENV=development
-```
-
----
-
-## Database Schema
-
-```sql
--- User credentials
-CREATE TABLE login (
-    id       SERIAL PRIMARY KEY,
-    email    TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL          -- bcrypt hash
-);
-
--- User balances (USDM)
-CREATE TABLE balance (
-    id      INT PRIMARY KEY REFERENCES login(id),
-    balance NUMERIC(18, 8) NOT NULL DEFAULT 0
-);
-
--- P2P transactions
-CREATE TABLE transactions (
-    id          SERIAL PRIMARY KEY,
-    sender_id   INT REFERENCES login(id),
-    receiver_id INT REFERENCES login(id),
-    amount      NUMERIC(18, 8) NOT NULL,
-    created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Linked payment methods (bank accounts via Plaid)
-CREATE TABLE payment_methods (
-    id                 SERIAL PRIMARY KEY,
-    user_id            INT REFERENCES login(id),
-    type               TEXT,
-    label              TEXT,
-    details            TEXT,
-    plaid_access_token TEXT,
-    plaid_account_id   TEXT,
-    created_at         TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Deposits / onramp events
-CREATE TABLE deposits (
-    id                   SERIAL PRIMARY KEY,
-    user_id              INT REFERENCES login(id),
-    method_label         TEXT,
-    amount               NUMERIC(18, 8) NOT NULL,
-    crossmint_payment_id TEXT,
-    created_at           TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Withdrawals / cashout events
-CREATE TABLE withdrawals (
-    id           SERIAL PRIMARY KEY,
-    user_id      INT REFERENCES login(id),
-    method_id    INT,
-    method_label TEXT,
-    amount       NUMERIC(18, 8) NOT NULL,
-    created_at   TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Custodial USDM pool (global wallet)
-CREATE TABLE global_wallet (
-    id           INT PRIMARY KEY DEFAULT 1,
-    usdm_balance NUMERIC(18, 8) NOT NULL DEFAULT 0
-);
-```
-
----
-
-## API Routes
-
-| Method          | Route                       | Description                                  |
-| --------------- | --------------------------- | -------------------------------------------- |
-| POST            | `/api/auth/signup`          | Register a new user (grants 10,000 USDM)     |
-| POST            | `/api/auth/signin`          | Authenticate and create a session            |
-| GET             | `/api/auth/session`         | Return the current session user              |
-| POST            | `/api/auth/signout`         | Clear the session cookie                     |
-| POST            | `/api/transfer`             | Transfer USDM to another user                |
-| GET             | `/api/transactions`         | Fetch transaction history                    |
-| GET/POST/DELETE | `/api/payment-methods`      | Manage linked payment methods                |
-| POST            | `/api/deposit`              | Record a deposit and credit balance          |
-| POST            | `/api/cashout`              | Record a withdrawal and debit balance        |
-| GET             | `/api/cashout/routes`       | List available cashout destinations          |
-| GET             | `/api/users/search`         | Search users by email                        |
-| POST            | `/api/plaid/link-token`     | Generate a Plaid Link token                  |
-| POST            | `/api/plaid/exchange-token` | Exchange Plaid public token for access token |
-| GET             | `/api/global-wallet`        | Get or update the global USDM pool balance   |
-
----
-
-## Authentication & Security
-
-- Passwords are hashed with **bcrypt** at cost factor 12.
-- Sessions use **HMAC-SHA256** signed tokens stored in **HttpOnly, Secure** cookies with a 7-day expiry.
-- Token comparison is timing-safe.
-- Balance updates use **row-level locking** (`SELECT … FOR UPDATE`) inside a PostgreSQL transaction to prevent race conditions.
-- Unauthenticated requests to protected routes are redirected to `/login` by the Next.js middleware (`proxy.ts`).
-
----
-
-## Scripts
-
-From inside the `swoin/` directory:
-
-```bash
 npm run dev    # Start development server (hot reload)
 npm run build  # Compile for production
 npm start      # Run the production build
 npm run lint   # Run ESLint
 ```
+
+Contact and license
+
+This repository is an implementation prototype created for BagelHacks. For commercial use consult legal and compliance experts.
